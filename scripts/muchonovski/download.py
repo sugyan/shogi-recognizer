@@ -4,10 +4,9 @@ from bs4 import BeautifulSoup
 
 
 class Downloader:
-    def __init__(self, rootUrl, directory):
-        saveDir = os.path.join(os.path.dirname(__file__), '..', '..', 'images', directory)
-        os.makedirs(saveDir, exist_ok=True)
-        self.rootUrl = rootUrl
+    url = 'http://mucho.girly.jp/bona/'
+
+    def __init__(self, directory):
         self.dir = saveDir
 
     def run(self):
@@ -15,7 +14,7 @@ class Downloader:
             self.downloadImages(path)
 
     def downloadImages(self, path):
-        soup = BeautifulSoup(urllib.request.urlopen(self.rootUrl + path), 'html.parser')
+        soup = BeautifulSoup(urllib.request.urlopen(Downloader.url + path), 'html.parser')
         for img in soup.find_all('img'):
             if img['src'].startswith('other'):
                 continue
@@ -24,8 +23,9 @@ class Downloader:
             saveDir = os.path.join(self.dir, *dirname.split('/'))
             os.makedirs(saveDir, exist_ok=True)
             savePath = os.path.join(saveDir, fileName)
-            urllib.request.urlretrieve(self.rootUrl + img['src'], savePath)
+            urllib.request.urlretrieve(Downloader.url + img['src'], savePath)
 
 
 if __name__ == '__main__':
-    Downloader('http://mucho.girly.jp/bona/', 'muchonovski').run()
+    saveDir = os.path.join(os.path.dirname(__file__), '..', '..', 'images', 'muchonovski')
+    Downloader(saveDir).run()
