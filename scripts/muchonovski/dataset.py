@@ -6,17 +6,12 @@ IMAGE_SIZE = 48
 
 
 class Generator:
-    def __init__(self, imageDir, dataDir):
+    def __init__(self, imageDir):
         self.imageDir = imageDir
-        self.dataDir = dataDir
+        self.dataDir = os.path.join(os.path.dirname(__file__), '..', '..', 'dataset')
         self.bans = ['dirty', 'gohan', 'kaya_a', 'kaya_b', 'kaya_c', 'kaya_d', 'muji', 'oritatami', 'paper', 'stripe']
         self.masus = ['dot_xy', 'dot', 'handwriting', 'nodot_xy', 'nodot']
         self.komas = ['dirty', 'kinki', 'kinki_torafu', 'ryoko', 'ryoko_torafu']
-        self.pieces = [
-            'Gfu', 'Gkyo',  'Gkei',  'Ggin',  'Gkaku', 'Ghi',
-            'Gto', 'Gnkyo', 'Gnkei', 'Gngin', 'Guma',  'Gryu', 'Gkin', 'Gou',
-            'Sfu', 'Skyo',  'Skei',  'Sgin',  'Skaku', 'Shi',
-            'Sto', 'Snkyo', 'Snkei', 'Sngin', 'Suma',  'Sryu', 'Skin', 'Sou']
         self.pieceMap = {
             'Gfu':   'W_FU', 'Sfu':   'B_FU',
             'Gto':   'W_TO', 'Sto':   'B_TO',
@@ -35,7 +30,7 @@ class Generator:
         }
 
     def run(self):
-        for piece in self.pieces:
+        for piece in self.pieceMap.keys():
             saveDir = os.path.join(self.dataDir, self.pieceMap[piece])
             for i in range(10):
                 ban = random.choice(self.bans)
@@ -65,5 +60,4 @@ class Generator:
 
 if __name__ == '__main__':
     imageDir = os.path.join(os.path.dirname(__file__), '..', '..', 'images', 'muchonovski')
-    dataDir = os.path.join(os.path.dirname(__file__), '..', '..', 'dataset')
-    Generator(imageDir, dataDir).run()
+    Generator(imageDir).run()

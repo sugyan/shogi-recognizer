@@ -7,7 +7,7 @@ class Downloader:
     url = 'http://mucho.girly.jp/bona/'
 
     def __init__(self, directory):
-        self.dir = saveDir
+        self.dir = directory
 
     def run(self):
         for path in ['koma.html', 'ban.html', 'masu.html']:
@@ -19,7 +19,7 @@ class Downloader:
             if img['src'].startswith('other'):
                 continue
             print('download {}...'.format(img['src']))
-            dirname, fileName = os.path.split(img['src'])
+            dirname, fileName = img['src'].split('/')
             saveDir = os.path.join(self.dir, *dirname.split('/'))
             os.makedirs(saveDir, exist_ok=True)
             savePath = os.path.join(saveDir, fileName)
