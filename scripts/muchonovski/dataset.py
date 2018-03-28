@@ -27,6 +27,7 @@ class Generator:
             'Ghi':   'W_HI', 'Shi':   'B_HI',
             'Gryu':  'W_RY', 'Sryu':  'B_RY',
             'Gou':   'W_OU', 'Sou':   'B_OU',
+            None: 'BLANK',
         }
 
     def run(self):
@@ -44,13 +45,15 @@ class Generator:
                     img.convert('RGB').save(fp, quality=90)
 
     def generate(self, banName, masuName, komaName, piece):
-        ban = Image.open(os.path.join(self.imageDir, 'ban', 'ban_{}.png'.format(banName)))
-        masu = Image.open(os.path.join(self.imageDir, 'masu', 'masu_{}.png'.format(masuName)))
-        koma = Image.open(os.path.join(self.imageDir, 'koma', 'koma_{}'.format(komaName), '{}.png'.format(piece)))
         file, rank = random.randrange(9), random.randrange(9)
         offset = (11 + 43 * file, 11 + 48 * rank)
+
+        ban = Image.open(os.path.join(self.imageDir, 'ban', 'ban_{}.png'.format(banName)))
+        masu = Image.open(os.path.join(self.imageDir, 'masu', 'masu_{}.png'.format(masuName)))
         ban.alpha_composite(masu)
-        ban.alpha_composite(koma, dest=offset)
+        if piece is not None:
+            koma = Image.open(os.path.join(self.imageDir, 'koma', 'koma_{}'.format(komaName), '{}.png'.format(piece)))
+            ban.alpha_composite(koma, dest=offset)
         return ban.crop(box=(
             offset[0] - int((IMAGE_SIZE - 43) / 2),
             offset[1] - int((IMAGE_SIZE - 48) / 2),

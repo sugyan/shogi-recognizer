@@ -19,7 +19,7 @@ class Downloader:
             if img['src'].startswith('other'):
                 continue
             print('download {}...'.format(img['src']))
-            dirname, fileName = img['src'].split('/')
+            dirname, fileName = img['src'].rsplit('/', 1)
             saveDir = os.path.join(self.dir, *dirname.split('/'))
             os.makedirs(saveDir, exist_ok=True)
             savePath = os.path.join(saveDir, fileName)
