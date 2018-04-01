@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 
 class Downloader:
-    url = 'http://www.irasutoya.com/'
+    url = 'https://www.irasutoya.com/'
 
     def __init__(self, directory):
         os.makedirs(directory, exist_ok=True)
@@ -22,7 +22,10 @@ class Downloader:
             print('download {}...'.format(img['src']))
             fileName = img['src'].split('/')[-1]
             savePath = os.path.join(saveDir, fileName)
-            urllib.request.urlretrieve(img['src'], savePath)
+            imageUrl = img['src']
+            if imageUrl.startswith('//'):
+                imageUrl = 'https:' + imageUrl
+            urllib.request.urlretrieve(imageUrl, savePath)
 
 
 if __name__ == '__main__':

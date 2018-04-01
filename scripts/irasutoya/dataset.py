@@ -61,7 +61,7 @@ class Generator:
             offset[0] + (xStep - yStep) / 2,
             offset[1],
             offset[0] + (xStep + yStep) / 2,
-            offset[1] + yStep)).resize((IMAGE_SIZE, IMAGE_SIZE))
+            offset[1] + yStep)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR)
 
 
 if __name__ == '__main__':
