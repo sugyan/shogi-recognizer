@@ -48,7 +48,7 @@ class Generator:
                             i += 1
 
     def generate(self, char, font, opposite):
-        size = random.randrange(400, 800)
+        size = random.randrange(600, 900)
         step = size / 10.0
         img = Image.new('RGB', (size, size), color='white')
         draw = ImageDraw.Draw(img)
@@ -87,6 +87,6 @@ class Generator:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--fonts', nargs='*')
+    parser.add_argument('--fonts', nargs='*', required=True)
     args = parser.parse_args()
     Generator(args.fonts).run()
