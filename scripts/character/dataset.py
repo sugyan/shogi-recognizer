@@ -29,6 +29,7 @@ class Generator:
         }
 
     def run(self):
+        otherIndex = 0
         for piece in self.pieceMap.keys():
             for opposite in [True, False]:
                 prefix = 'W_' if opposite else 'B_'
@@ -38,14 +39,21 @@ class Generator:
                 i = 0
                 for font in self.fonts:
                     for char in self.pieceMap[piece]:
-                        for _ in range(3):
+                        for _ in range(5):
                             filename = 'character_{:02d}.jpg'.format(i)
                             savePath = os.path.join(saveDir, filename)
                             print('{}: {}...'.format(os.path.basename(saveDir), filename))
-                            img = self.generate(char, font, opposite)
+                            img, other = self.generate(char, font, opposite)
                             with open(savePath, 'w') as fp:
-                                img.save(fp, quality=90)
+                                img.save(fp, quality=random.randint(90, 100))
                             i += 1
+                            if random.randrange(20) == 0:
+                                filename = 'character_{:02d}.jpg'.format(otherIndex)
+                                otherPath = os.path.join(self.dataDir, 'OTHER', filename)
+                                print('OTHER: {}...'.format(otherPath))
+                                with open(otherPath, 'w') as fp:
+                                    other.save(fp, quality=random.randint(90, 100))
+                                otherIndex += 1
 
     def generate(self, char, font, opposite):
         size = random.randrange(600, 900)
@@ -58,7 +66,7 @@ class Generator:
                 width = 2
             draw.line([(step * (i + 0.5), step * 0.5), (step * (i + 0.5), step * 9.5)], fill=0, width=width)
             draw.line([(step * 0.5, step * (i + 0.5)), (step * 9.5, step * (i + 0.5))], fill=0, width=width)
-        pieceSize = step * random.randrange(80, 85) / 100.0
+        pieceSize = step * random.randrange(80, 95) / 100.0
         pieceImg = Image.new('RGB', (int(pieceSize), int(pieceSize)), color='white')
         if char is not None:
             font = ImageFont.truetype(font, size=int(pieceSize))
@@ -78,11 +86,25 @@ class Generator:
         img.paste(pieceImg, box=(
             int(step * (file + 1) - pieceSize * 0.5) + 1,
             int(step * (rank + 1) - pieceSize * 0.5) + 1))
-        return img.crop(box=(
-            step * (file + 0.5) - 2,
-            step * (rank + 0.5) - 2,
-            step * (file + 1.5) + 2,
-            step * (rank + 1.5) + 2)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR)
+        otherOffset = [step * (file + 0.5) - 2, step * (rank + 0.5) - 2]
+        if random.randrange(2) == 0:
+            otherOffset[0] += step * (random.randrange(2) - 0.5)
+            otherOffset[1] = random.randrange(size - int(step))
+        else:
+            otherOffset[0] = random.randrange(size - int(step))
+            otherOffset[1] += step * (random.randrange(2) - 0.5)
+        return [
+            img.crop(box=(
+                step * (file + 0.5) - 2,
+                step * (rank + 0.5) - 2,
+                step * (file + 1.5) + 2,
+                step * (rank + 1.5) + 2)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR),
+            img.crop(box=(
+                otherOffset[0],
+                otherOffset[1],
+                otherOffset[0] + step + 2,
+                otherOffset[1] + step + 2)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR),
+        ]
 
 
 if __name__ == '__main__':

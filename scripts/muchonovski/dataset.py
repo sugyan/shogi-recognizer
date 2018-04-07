@@ -31,18 +31,26 @@ class Generator:
         }
 
     def run(self):
+        otherIndex = 0
         for piece in self.pieceMap.keys():
             saveDir = os.path.join(self.dataDir, self.pieceMap[piece])
             for i in range(10):
                 ban = random.choice(self.bans)
                 masu = random.choice(self.masus)
                 koma = random.choice(self.komas)
-                img = self.generate(ban, masu, koma, piece)
+                img, other = self.generate(ban, masu, koma, piece)
                 filename = 'muchonovski_{:02d}.jpg'.format(i)
                 savePath = os.path.join(saveDir, filename)
                 print('{}: {}...'.format(os.path.basename(saveDir), filename))
                 with open(savePath, 'w') as fp:
-                    img.convert('RGB').save(fp, quality=90)
+                    img.convert('RGB').save(fp, quality=random.randint(90, 100))
+                if random.randrange(20) == 0:
+                    filename = 'muchonovski_{:02d}.jpg'.format(otherIndex)
+                    otherPath = os.path.join(self.dataDir, 'OTHER', filename)
+                    print('OTHER: {}...'.format(otherPath))
+                    with open(otherPath, 'w') as fp:
+                        other.convert('RGB').save(fp, quality=random.randint(90, 100))
+                    otherIndex += 1
 
     def generate(self, banName, masuName, komaName, piece):
         file, rank = random.randrange(9), random.randrange(9)
@@ -54,11 +62,25 @@ class Generator:
         if piece is not None:
             koma = Image.open(os.path.join(self.imageDir, 'koma', 'koma_{}'.format(komaName), '{}.png'.format(piece)))
             ban.alpha_composite(koma, dest=offset)
-        return ban.crop(box=(
-            offset[0] - int((IMAGE_SIZE - 43) / 2),
-            offset[1] - int((IMAGE_SIZE - 48) / 2),
-            offset[0] - int((IMAGE_SIZE - 43) / 2) + IMAGE_SIZE,
-            offset[1] - int((IMAGE_SIZE - 48) / 2) + IMAGE_SIZE))
+        otherOffset = [offset[0], offset[1]]
+        if random.randrange(2) == 0:
+            otherOffset[0] += int(IMAGE_SIZE * (random.randrange(2) - 0.5))
+            otherOffset[1] = random.randrange(ban.height - IMAGE_SIZE)
+        else:
+            otherOffset[0] = random.randrange(ban.width - IMAGE_SIZE)
+            otherOffset[1] += int(IMAGE_SIZE * (random.randrange(2) - 0.5))
+        return [
+            ban.crop(box=(
+                offset[0] - int((IMAGE_SIZE - 43) / 2),
+                offset[1] - int((IMAGE_SIZE - 48) / 2),
+                offset[0] - int((IMAGE_SIZE - 43) / 2) + IMAGE_SIZE,
+                offset[1] - int((IMAGE_SIZE - 48) / 2) + IMAGE_SIZE)),
+            ban.crop(box=(
+                otherOffset[0] - int((IMAGE_SIZE - 43) / 2),
+                otherOffset[1] - int((IMAGE_SIZE - 48) / 2),
+                otherOffset[0] - int((IMAGE_SIZE - 43) / 2) + IMAGE_SIZE,
+                otherOffset[1] - int((IMAGE_SIZE - 48) / 2) + IMAGE_SIZE)),
+        ]
 
 
 if __name__ == '__main__':

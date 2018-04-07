@@ -41,7 +41,7 @@ class Generator:
                     savePath = os.path.join(saveDir, filename)
                     print('{}: {}...'.format(os.path.basename(saveDir), filename))
                     with open(savePath, 'w') as fp:
-                        img.convert('RGB').save(fp, quality=90)
+                        img.convert('RGB').save(fp, quality=random.randint(90, 100))
                 if piece is None:
                     break
 
