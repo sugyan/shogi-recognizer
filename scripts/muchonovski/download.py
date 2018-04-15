@@ -7,6 +7,7 @@ class Downloader:
     url = 'http://mucho.girly.jp/bona/'
 
     def __init__(self, directory):
+        os.makedirs(directory, exist_ok=True)
         self.dir = directory
 
     def run(self):
@@ -19,11 +20,12 @@ class Downloader:
             if img['src'].startswith('other'):
                 continue
             print('download {}...'.format(img['src']))
-            dirname, fileName = img['src'].rsplit('/', 1)
-            saveDir = os.path.join(self.dir, *dirname.split('/'))
+            dirName, fileName = img['src'].rsplit('/', 1)
+            saveDir = os.path.join(self.dir, *dirName.split('/'))
             os.makedirs(saveDir, exist_ok=True)
             savePath = os.path.join(saveDir, fileName)
-            urllib.request.urlretrieve(Downloader.url + img['src'], savePath)
+            imageUrl = Downloader.url + img['src']
+            urllib.request.urlretrieve(imageUrl, savePath)
 
 
 if __name__ == '__main__':

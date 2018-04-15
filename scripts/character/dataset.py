@@ -40,16 +40,16 @@ class Generator:
                 for font in self.fonts:
                     for char in self.pieceMap[piece]:
                         for _ in range(5):
-                            filename = 'character_{:02d}.jpg'.format(i)
-                            savePath = os.path.join(saveDir, filename)
-                            print('{}: {}...'.format(os.path.basename(saveDir), filename))
+                            fileName = 'character_{:02d}.jpg'.format(i)
+                            savePath = os.path.join(saveDir, fileName)
+                            print('{}: {}...'.format(os.path.basename(saveDir), fileName))
                             img, other = self.generate(char, font, opposite)
                             with open(savePath, 'w') as fp:
                                 img.save(fp, quality=random.randint(90, 100))
                             i += 1
                             if random.randrange(20) == 0:
-                                filename = 'character_{:02d}.jpg'.format(otherIndex)
-                                otherPath = os.path.join(self.dataDir, 'OTHER', filename)
+                                fileName = 'character_{:02d}.jpg'.format(otherIndex)
+                                otherPath = os.path.join(self.dataDir, 'OTHER', fileName)
                                 print('OTHER: {}...'.format(otherPath))
                                 with open(otherPath, 'w') as fp:
                                     other.save(fp, quality=random.randint(90, 100))
