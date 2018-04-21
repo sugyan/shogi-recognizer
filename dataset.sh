@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-python scripts/muchonovski/download.py
-python scripts/muchonovski/dataset.py
+SOURCES='muchonovski irasutoya shineleckoma sozai'
 
-python scripts/irasutoya/download.py
-python scripts/irasutoya/dataset.py
+# for SOURCE in ${SOURCES}; do
+#     python scripts/${SOURCE}/download.sh
+# done
 
-python scripts/shineleckoma/download.py
-python scripts/shineleckoma/dataset.py
-
-python scripts/character/dataset.py --fonts 
+for SOURCE in ${SOURCES}; do
+    python ./scripts/${SOURCE}/dataset.py
+done
+python scripts/character/dataset.py --fonts /System/Library/Fonts/ヒラギノ*.ttc

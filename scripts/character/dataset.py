@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+import re
 from PIL import Image, ImageDraw, ImageFont
 
 IMAGE_SIZE = 48
@@ -108,7 +109,8 @@ class Generator:
 
 
 if __name__ == '__main__':
+    fontFilter = re.compile('W[6-9]')
     parser = argparse.ArgumentParser()
     parser.add_argument('--fonts', nargs='*', required=True)
     args = parser.parse_args()
-    Generator(args.fonts).run()
+    Generator([f for f in args.fonts if not fontFilter.search(f)]).run()
