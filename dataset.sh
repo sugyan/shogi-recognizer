@@ -2,11 +2,11 @@
 
 SOURCES='muchonovski irasutoya shineleckoma sozai'
 
-# for SOURCE in ${SOURCES}; do
-#     python scripts/${SOURCE}/download.sh
-# done
+for SOURCE in ${SOURCES}; do
+    scripts/${SOURCE}/download.py
+done
 
 for SOURCE in ${SOURCES}; do
-    python ./scripts/${SOURCE}/dataset.py
+    scripts/${SOURCE}/dataset.py
 done
-python scripts/character/dataset.py --fonts /System/Library/Fonts/ヒラギノ*.ttc
+scripts/character/dataset.py --fonts /System/Library/Fonts/ヒラギノ*.ttc

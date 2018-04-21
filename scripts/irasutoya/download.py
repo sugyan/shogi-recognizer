@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import urllib.request
 from bs4 import BeautifulSoup
