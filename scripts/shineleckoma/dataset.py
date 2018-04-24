@@ -4,7 +4,7 @@ import os
 import random
 from PIL import Image, ImageDraw
 
-IMAGE_SIZE = 48
+IMAGE_SIZE = 96
 
 
 class Generator:
@@ -36,19 +36,19 @@ class Generator:
             for k, v in self.pieceMap.items():
                 if k == 'W_OU' and random.randrange(2) == 0:
                     v[1] += 1
-                for j in range(2):
-                    fileName = 'shineleckoma_{:03d}.jpg'.format(i * 2 + j)
+                for j in range(3):
+                    fileName = 'shineleckoma_{:03d}.jpg'.format(i * 3 + j)
                     savePath = os.path.join(self.dataDir, k, fileName)
                     print('{}: {}...'.format(os.path.basename(k), fileName))
                     img, other = self.generate(bmp, v)
                     with open(savePath, 'w') as fp:
-                        img.save(fp, quality=random.randint(90, 100))
+                        img.save(fp, quality=random.randint(80, 100))
                     if random.randrange(28 * 2) == 0:
                         fileName = 'shineleckoma_{:03d}.jpg'.format(otherIndex)
                         otherPath = os.path.join(self.dataDir, 'OTHER', fileName)
                         print('OTHER: {}...'.format(otherPath))
                         with open(otherPath, 'w') as fp:
-                            other.save(fp, quality=random.randint(90, 100))
+                            other.save(fp, quality=random.randint(80, 100))
                         otherIndex += 1
 
     def generate(self, bmp, loc):
@@ -78,17 +78,18 @@ class Generator:
         else:
             otherOffset[0] = random.randrange(463 - 50)
             otherOffset[1] += random.choice([25.5, -25.5])
+        resample = random.choice([Image.NEAREST, Image.BILINEAR, Image.HAMMING, Image.BICUBIC, Image.LANCZOS])
         return [
             board.crop(box=(
                 file * 50 + 5,
                 rank * 51 + 5,
                 file * 50 + 58,
-                rank * 51 + 59)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR),
+                rank * 51 + 59)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=resample),
             board.crop(box=(
                 otherOffset[0],
                 otherOffset[1],
                 otherOffset[0] + 53,
-                otherOffset[1] + 54)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR),
+                otherOffset[1] + 54)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=resample),
         ]
 
 

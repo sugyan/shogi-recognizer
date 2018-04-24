@@ -3,7 +3,7 @@ import os
 import random
 from PIL import Image
 
-IMAGE_SIZE = 48
+IMAGE_SIZE = 96
 
 
 class Generator:
@@ -35,25 +35,26 @@ class Generator:
         otherIndex = 0
         for piece in self.pieceMap.keys():
             saveDir = os.path.join(self.dataDir, self.pieceMap[piece])
-            for i in range(10):
+            for i in range(30):
                 ban = random.choice(self.bans)
                 masu = random.choice(self.masus)
                 koma = random.choice(self.komas)
-                img, other = self.generate(ban, masu, koma, piece)
+                resample = random.choice([Image.NEAREST, Image.BILINEAR, Image.HAMMING, Image.BICUBIC, Image.LANCZOS])
+                img, other = self.generate(ban, masu, koma, piece, resample)
                 filename = 'muchonovski_{:02d}.jpg'.format(i)
                 savePath = os.path.join(saveDir, filename)
                 print('{}: {}...'.format(os.path.basename(saveDir), filename))
                 with open(savePath, 'w') as fp:
-                    img.convert('RGB').save(fp, quality=random.randint(90, 100))
-                if random.randrange(20) == 0:
+                    img.convert('RGB').save(fp, quality=random.randint(80, 100))
+                if random.randrange(30) == 0:
                     filename = 'muchonovski_{:02d}.jpg'.format(otherIndex)
                     otherPath = os.path.join(self.dataDir, 'OTHER', filename)
                     print('OTHER: {}...'.format(otherPath))
                     with open(otherPath, 'w') as fp:
-                        other.convert('RGB').save(fp, quality=random.randint(90, 100))
+                        other.convert('RGB').save(fp, quality=random.randint(80, 100))
                     otherIndex += 1
 
-    def generate(self, banName, masuName, komaName, piece):
+    def generate(self, banName, masuName, komaName, piece, resample):
         file, rank = random.randrange(9), random.randrange(9)
         offset = (11 + 43 * file, 11 + 48 * rank)
 
@@ -65,22 +66,22 @@ class Generator:
             ban.alpha_composite(koma, dest=offset)
         otherOffset = [offset[0], offset[1]]
         if random.randrange(2) == 0:
-            otherOffset[0] += int(IMAGE_SIZE * (random.randrange(2) - 0.5))
-            otherOffset[1] = random.randrange(ban.height - IMAGE_SIZE)
+            otherOffset[0] += random.choice([21.5, -21.5])
+            otherOffset[1] = random.randrange(ban.height - 48)
         else:
-            otherOffset[0] = random.randrange(ban.width - IMAGE_SIZE)
-            otherOffset[1] += int(IMAGE_SIZE * (random.randrange(2) - 0.5))
+            otherOffset[0] = random.randrange(ban.width - 48)
+            otherOffset[1] += random.choice([24, -24])
         return [
             ban.crop(box=(
-                offset[0] - int((IMAGE_SIZE - 43) / 2),
-                offset[1] - int((IMAGE_SIZE - 48) / 2),
-                offset[0] - int((IMAGE_SIZE - 43) / 2) + IMAGE_SIZE,
-                offset[1] - int((IMAGE_SIZE - 48) / 2) + IMAGE_SIZE)),
+                offset[0] - 2,
+                offset[1],
+                offset[0] + 46,
+                offset[1] + 48)).resize([IMAGE_SIZE, IMAGE_SIZE], resample=resample),
             ban.crop(box=(
-                otherOffset[0] - int((IMAGE_SIZE - 43) / 2),
-                otherOffset[1] - int((IMAGE_SIZE - 48) / 2),
-                otherOffset[0] - int((IMAGE_SIZE - 43) / 2) + IMAGE_SIZE,
-                otherOffset[1] - int((IMAGE_SIZE - 48) / 2) + IMAGE_SIZE)),
+                otherOffset[0] - 2,
+                otherOffset[1],
+                otherOffset[0] + 46,
+                otherOffset[1] + 48)).resize([IMAGE_SIZE, IMAGE_SIZE], resample=resample),
         ]
 
 

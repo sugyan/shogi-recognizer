@@ -3,7 +3,7 @@ import os
 import random
 from PIL import Image
 
-IMAGE_SIZE = 48
+IMAGE_SIZE = 96
 
 
 class Generator:
@@ -40,13 +40,13 @@ class Generator:
                     savePath = os.path.join(self.dataDir, k, fileName)
                     print('{}: {}...'.format(k, fileName))
                     with open(savePath, 'w') as fp:
-                        img.convert('RGB').save(fp, quality=random.randrange(90, 100))
+                        img.convert('RGB').save(fp, quality=random.randrange(80, 100))
                     if random.randrange(21) == 0:
                         fileName = 'sozai_{:02d}.jpg'.format(otherIndex)
                         otherPath = os.path.join(self.dataDir, 'OTHER', fileName)
                         print('OTHER: {}...'.format(fileName))
                         with open(otherPath, 'w') as fp:
-                            other.convert('RGB').save(fp, quality=random.randint(90, 100))
+                            other.convert('RGB').save(fp, quality=random.randint(80, 100))
                         otherIndex += 1
 
     def generate(self, piece):
@@ -67,17 +67,18 @@ class Generator:
         else:
             otherOffset[0] = random.randrange(img.width - 64)
             otherOffset[1] += random.choice([32, -32])
+        resample = random.choice([Image.NEAREST, Image.BILINEAR, Image.HAMMING, Image.BICUBIC, Image.LANCZOS])
         return [
             img.crop(box=(
                 file * 60 + 30 - 2,
                 rank * 64 + 30,
                 file * 60 + 30 + 62,
-                rank * 64 + 30 + 64)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR),
+                rank * 64 + 30 + 64)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=resample),
             img.crop(box=(
                 otherOffset[0],
                 otherOffset[1],
                 otherOffset[0] + 64,
-                otherOffset[1] + 64)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR),
+                otherOffset[1] + 64)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=resample),
         ]
 
 

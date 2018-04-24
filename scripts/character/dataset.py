@@ -5,7 +5,7 @@ import random
 import re
 from PIL import Image, ImageDraw, ImageFont
 
-IMAGE_SIZE = 48
+IMAGE_SIZE = 96
 
 
 class Generator:
@@ -41,24 +41,24 @@ class Generator:
                 i = 0
                 for font in self.fonts:
                     for char in self.pieceMap[piece]:
-                        for _ in range(5):
-                            fileName = 'character_{:02d}.jpg'.format(i)
+                        for _ in range(10):
+                            fileName = 'character_{:03d}.jpg'.format(i)
                             savePath = os.path.join(saveDir, fileName)
                             print('{}: {}...'.format(os.path.basename(saveDir), fileName))
                             img, other = self.generate(char, font, opposite)
                             with open(savePath, 'w') as fp:
-                                img.save(fp, quality=random.randint(90, 100))
+                                img.save(fp, quality=random.randint(80, 100))
                             i += 1
                             if random.randrange(20) == 0:
                                 fileName = 'character_{:02d}.jpg'.format(otherIndex)
                                 otherPath = os.path.join(self.dataDir, 'OTHER', fileName)
                                 print('OTHER: {}...'.format(otherPath))
                                 with open(otherPath, 'w') as fp:
-                                    other.save(fp, quality=random.randint(90, 100))
+                                    other.save(fp, quality=random.randint(80, 100))
                                 otherIndex += 1
 
     def generate(self, char, font, opposite):
-        size = random.randrange(600, 900)
+        size = random.randrange(600, 1200)
         step = size / 10.0
         img = Image.new('RGB', (size, size), color='white')
         draw = ImageDraw.Draw(img)
@@ -95,17 +95,18 @@ class Generator:
         else:
             otherOffset[0] = random.randrange(size - int(step))
             otherOffset[1] += step * (random.randrange(2) - 0.5)
+        resample = random.choice([Image.NEAREST, Image.BILINEAR, Image.HAMMING, Image.BICUBIC, Image.LANCZOS])
         return [
             img.crop(box=(
                 step * (file + 0.5) - 2,
                 step * (rank + 0.5) - 2,
                 step * (file + 1.5) + 2,
-                step * (rank + 1.5) + 2)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR),
+                step * (rank + 1.5) + 2)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=resample),
             img.crop(box=(
                 otherOffset[0],
                 otherOffset[1],
                 otherOffset[0] + step + 2,
-                otherOffset[1] + step + 2)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR),
+                otherOffset[1] + step + 2)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=resample),
         ]
 
 

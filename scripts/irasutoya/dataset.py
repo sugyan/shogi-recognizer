@@ -3,7 +3,7 @@ import os
 import random
 from PIL import Image
 
-IMAGE_SIZE = 48
+IMAGE_SIZE = 96
 
 
 class Generator:
@@ -36,13 +36,13 @@ class Generator:
                 if piece is None:
                     prefix = ''
                 saveDir = os.path.join(self.dataDir, prefix + self.pieceMap[piece])
-                for i in range(3):
+                for i in range(10):
                     img = self.generate(piece, opposite)
                     filename = 'irasutoya_{:02d}.jpg'.format(i)
                     savePath = os.path.join(saveDir, filename)
                     print('{}: {}...'.format(os.path.basename(saveDir), filename))
                     with open(savePath, 'w') as fp:
-                        img.convert('RGB').save(fp, quality=random.randint(90, 100))
+                        img.convert('RGB').save(fp, quality=random.randint(80, 100))
                 if piece is None:
                     break
 
@@ -58,11 +58,12 @@ class Generator:
                 koma = koma.rotate(180)
             komaOffset = (int(offset[0] + 4.5), int(offset[1] + 2))
             ban.alpha_composite(koma, dest=komaOffset)
+        resample = random.choice([Image.NEAREST, Image.BILINEAR, Image.HAMMING, Image.BICUBIC, Image.LANCZOS])
         return ban.crop(box=(
             offset[0] + (xStep - yStep) / 2,
             offset[1],
             offset[0] + (xStep + yStep) / 2,
-            offset[1] + yStep)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=Image.BILINEAR)
+            offset[1] + yStep)).resize((IMAGE_SIZE, IMAGE_SIZE), resample=resample)
 
 
 if __name__ == '__main__':
