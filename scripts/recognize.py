@@ -32,11 +32,11 @@ class Recognizer:
                     h * (rank - 0.5) - size / 2.0,
                     w * (9.5 - file) + size / 2.0,
                     h * (rank - 0.5) + size / 2.0])
-                resized = cropped.resize([IMAGE_SIZE, IMAGE_SIZE])
+                resized = cropped.resize([IMAGE_SIZE, IMAGE_SIZE], resample=Image.BILINEAR)
                 if file == 2 and rank == 8:
                     with open('out.jpg', 'w') as f:
                         resized.save(f)
-                inputs.append(np.array(resized) * 2.0 / 255.0 - 1.0)
+                inputs.append(np.array(resized) / 255.0)
         with tf.Graph().as_default() as g:
             tf.import_graph_def(self.graph_def, name='')
             placeholder = g.get_tensor_by_name('Placeholder:0')
