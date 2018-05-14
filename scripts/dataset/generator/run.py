@@ -31,7 +31,7 @@ def run(dataDir, g):
         weights.append(weight)
 
     for piece in PIECES:
-        for i in range(10):
+        for i in range(2000):
             fileName = '{:04d}.jpg'.format(i)
             savePath = os.path.join(dataDir, piece, fileName)
             generator = random.choices(generators, weights=weights)[0]
@@ -52,8 +52,8 @@ if __name__ == '__main__':
     dataDir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'dataset')
     imageDir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'images')
     generators = {
-        AlphaGenerator(imageDir): 1,
-        ShineleckomaGenerator(imageDir): 0,
-        CharacterGenerator(fonts): 0,
+        AlphaGenerator(imageDir): 5,
+        ShineleckomaGenerator(imageDir): 4,
+        CharacterGenerator(fonts): 1,
     }
     run(dataDir, generators)

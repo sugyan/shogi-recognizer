@@ -18,14 +18,80 @@ def add_noise(img):
 class AlphaGenerator(Generator):
     def __init__(self, imageDir):
         self.imageDir = imageDir
-        self.sources = ['irasutoya', 'muchonovski', 'sozai']
+        self.pieceMap = {
+            'irasutoya': {
+                'B_FU': ['syougi14_fuhyou'],   'W_FU': ['syougi14_fuhyou'],
+                'B_TO': ['syougi15_tokin'],    'W_TO': ['syougi15_tokin'],
+                'B_KY': ['syougi12_kyousya'],  'W_KY': ['syougi12_kyousya'],
+                'B_NY': ['syougi13_narikyou'], 'W_NY': ['syougi13_narikyou'],
+                'B_KE': ['syougi10_keima'],    'W_KE': ['syougi10_keima'],
+                'B_NK': ['syougi11_narikei'],  'W_NK': ['syougi11_narikei'],
+                'B_GI': ['syougi08_ginsyou'],  'W_GI': ['syougi08_ginsyou'],
+                'B_NG': ['syougi09_narigin'],  'W_NG': ['syougi09_narigin'],
+                'B_KI': ['syougi07_kinsyou'],  'W_KI': ['syougi07_kinsyou'],
+                'B_KA': ['syougi05_gakugyou'], 'W_KA': ['syougi05_gakugyou'],
+                'B_UM': ['syougi06_ryuuma'],   'W_UM': ['syougi06_ryuuma'],
+                'B_HI': ['syougi03_hisya'],    'W_HI': ['syougi03_hisya'],
+                'B_RY': ['syougi04_ryuuou'],   'W_RY': ['syougi04_ryuuou'],
+                'B_OU': ['syougi01_ousyou', 'syougi02_gyokusyou'],
+                'W_OU': ['syougi01_ousyou', 'syougi02_gyokusyou'],
+            },
+            'muchonovski': {
+                'B_FU': ['Sfu'],   'W_FU': ['Gfu'],
+                'B_TO': ['Sto'],   'W_TO': ['Gto'],
+                'B_KY': ['Skyo'],  'W_KY': ['Gkyo'],
+                'B_NY': ['Snkyo'], 'W_NY': ['Gnkyo'],
+                'B_KE': ['Skei'],  'W_KE': ['Gkei'],
+                'B_NK': ['Snkei'], 'W_NK': ['Gnkei'],
+                'B_GI': ['Sgin'],  'W_GI': ['Ggin'],
+                'B_NG': ['Sngin'], 'W_NG': ['Gngin'],
+                'B_KI': ['Skin'],  'W_KI': ['Gkin'],
+                'B_KA': ['Skaku'], 'W_KA': ['Gkaku'],
+                'B_UM': ['Suma'],  'W_UM': ['Guma'],
+                'B_HI': ['Shi'],   'W_HI': ['Ghi'],
+                'B_RY': ['Sryu'],  'W_RY': ['Gryu'],
+                'B_OU': ['Sou'],   'W_OU': ['Gou'],
+            },
+            'sozai': {
+                'B_FU': ['sgl08'],          'W_FU': ['sgl38'],
+                'B_TO': ['sgl18', 'sgl28'], 'W_TO': ['sgl48', 'sgl58'],
+                'B_KY': ['sgl07'],          'W_KY': ['sgl37'],
+                'B_NY': ['sgl17', 'sgl27'], 'W_NY': ['sgl47', 'sgl57'],
+                'B_KE': ['sgl06'],          'W_KE': ['sgl36'],
+                'B_NK': ['sgl16', 'sgl26'], 'W_NK': ['sgl46', 'sgl56'],
+                'B_GI': ['sgl05'],          'W_GI': ['sgl35'],
+                'B_NG': ['sgl15', 'sgl25'], 'W_NG': ['sgl45', 'sgl55'],
+                'B_KI': ['sgl04'],          'W_KI': ['sgl34'],
+                'B_KA': ['sgl03'],          'W_KA': ['sgl33'],
+                'B_UM': ['sgl13', 'sgl23'], 'W_UM': ['sgl43', 'sgl53'],
+                'B_HI': ['sgl02'],          'W_HI': ['sgl32'],
+                'B_RY': ['sgl12', 'sgl22'], 'W_RY': ['sgl42', 'sgl51'],
+                'B_OU': ['sgl01', 'sgl11'], 'W_OU': ['sgl31', 'sgl41'],
+            }
+        }
 
     def generate(self, piece):
-        board = self.__board()
-        return board.convert('RGB')
+        board, xywh = self.__board()
+        # draw piece
+        file, rank = random.randrange(9), random.randrange(9)
+        if piece != 'BLANK':
+            piece = self.__piece(piece)
+            resized = piece.resize([int(x) for x in xywh[2:4]], resample=random.choice(RESAMPLES))
+            board.alpha_composite(resized, dest=(int(xywh[0] + file * xywh[2]), int(xywh[1] + rank * xywh[3])))
+        # crop
+        box = (
+            xywh[0] + (file + random.normalvariate(0.0, 0.02)) * xywh[2],
+            xywh[1] + (rank + random.normalvariate(0.0, 0.02)) * xywh[3],
+            xywh[0] + (file + random.normalvariate(0.0, 0.02) + 1) * xywh[2],
+            xywh[1] + (rank + random.normalvariate(0.0, 0.02) + 1) * xywh[3],
+        )
+        cropped = board.crop(box=box)
+        # resize
+        add_noise(cropped)
+        return cropped.resize((IMAGE_SIZE, IMAGE_SIZE), resample=random.choice(RESAMPLES)).convert('RGB')
 
     def __board(self):
-        source = random.choice(self.sources)
+        source = random.choices(['irasutoya', 'muchonovski', 'sozai'], weights=[1, 10, 1])[0]
         path = random.choice({
             'irasutoya': [os.path.join('irasutoya', 'syougi_ban.png')],
             'muchonovski': [
@@ -42,16 +108,38 @@ class AlphaGenerator(Generator):
             ],
             'sozai': [
                 os.path.join('sozai', 'japanese-chess', 'board', 'japanese-chess-b02.jpg'),
-                os.path.join('sozai', 'japanese-chess', 'board', 'japanese-chess-bdl.png'),
             ]
         }[source])
         board = Image.open(os.path.join(self.imageDir, path))
-        if board.mode == 'RGBA':
-            if source == 'muchonovski':
-                # TODO
-            return board
-        img = Image.new('RGBA', board.size, color='white')
-        img.paste(board, box=(0, 0, board.width, board.height))
+        if board.mode != 'RGBA':
+            img = Image.new('RGBA', board.size, color='white')
+            img.paste(board, box=(0, 0, board.width, board.height))
+            board = img
+        if source == 'muchonovski':
+            paths = [
+                os.path.join('muchonovski', 'masu', 'masu_dot.png'),
+                os.path.join('muchonovski', 'masu', 'masu_handwriting.png'),
+                os.path.join('muchonovski', 'masu', 'masu_nodot.png'),
+            ]
+            grid = Image.open(os.path.join(self.imageDir, random.choice(paths)))
+            board.alpha_composite(grid)
+        return board, {
+            'irasutoya': [16.0, 15.0, 430.0 / 9.0, 470.0 / 9.0],
+            'muchonovski': [11.0, 11.0, 43.0, 48.0],
+            'sozai': [30.0, 30.0, 60.0, 64.0]
+        }[source]
+
+    def __piece(self, piece):
+        source = random.choices(['irasutoya', 'muchonovski', 'sozai'], weights=[1, 5, 1])[0]
+        path = os.path.join(self.imageDir, source)
+        if source == 'muchonovski':
+            path = os.path.join(path, 'koma', random.choice([
+                'koma_dirty', 'koma_kinki', 'koma_kinki_torafu', 'koma_ryoko', 'koma_ryoko_torafu']))
+        if source == 'sozai':
+            path = os.path.join(path, 'japanese-chess', 'koma', '60x64')
+        img = Image.open(os.path.join(path, '{}.png'.format(random.choice(self.pieceMap[source][piece]))))
+        if source == 'irasutoya' and piece.startswith('W_'):
+            img = img.rotate(180)
         return img
 
 
