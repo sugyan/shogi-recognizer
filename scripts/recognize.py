@@ -23,19 +23,15 @@ class Recognizer:
     def run(self, input_image):
         img = Image.open(input_image).convert('RGB')
         h, w = img.height / 9, img.width / 9
-        size = max([h, w])
         inputs = []
         for file in range(1, 10):
             for rank in range(1, 10):
                 cropped = img.crop([
-                    w * (9.5 - file) - size / 2.0,
-                    h * (rank - 0.5) - size / 2.0,
-                    w * (9.5 - file) + size / 2.0,
-                    h * (rank - 0.5) + size / 2.0])
+                    w * (9 - file),
+                    h * (rank - 1),
+                    w * (10 - file),
+                    h * rank])
                 resized = cropped.resize([IMAGE_SIZE, IMAGE_SIZE], resample=Image.BILINEAR)
-                if file == 2 and rank == 8:
-                    with open('out.jpg', 'w') as f:
-                        resized.save(f)
                 inputs.append(np.array(resized) / 255.0)
         with tf.Graph().as_default() as g:
             tf.import_graph_def(self.graph_def, name='')
