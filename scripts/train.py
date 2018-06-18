@@ -2,13 +2,14 @@ import collections
 import os
 import hashlib
 import random
+import time
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from nets.mobilenet import mobilenet_v2
 from tensorflow.python.platform import tf_logging as logging
 
 FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_string('image_dir', '',
+tf.app.flags.DEFINE_string('image_dir', os.path.join(os.path.dirname(__file__), '..', 'dataset'),
                            '''Path to directories of labeled images''')
 tf.app.flags.DEFINE_string('checkpoint_dir', 'logdir',
                            '''Directory for writing training checkpoints and logs''')
@@ -93,7 +94,7 @@ def shogi_inputs(image_lists):
     v_dataset = generate_dataset('validation')
     v_dataset = v_dataset.map(parser)
     v_dataset = v_dataset.repeat()
-    v_dataset = v_dataset.batch(FLAGS.batch_size)
+    v_dataset = v_dataset.batch(FLAGS.batch_size * 5)
 
     return [
         t_dataset.make_initializable_iterator(),
@@ -137,13 +138,50 @@ def build_model():
 
     slim.summaries.add_scalar_summary(total_loss, 'total_loss', 'losses')
     slim.summaries.add_scalar_summary(learning_rate, 'learning_rate', 'training')
-    slim.summaries.add_scalar_summary(accuracy, 'validation accuracy', 'validation')
-    return g, train_tensor, accuracy, t_iter.initializer, v_iter.initializer
+    slim.summaries.add_scalar_summary(accuracy, 'validation_accuracy', 'validation')
+    return g, train_tensor, accuracy, t_iter.initializer, v_iter.initializer, list(image_lists.keys())
 
 
 def main(args=None):
-    g, train_tensor, accuracy, t_init, v_init = build_model()
-    # TODO
+    g, train_tensor, accuracy, t_init, v_init, labels = build_model()
+
+    # save labels
+    with open(os.path.join(FLAGS.checkpoint_dir, 'labels.txt'), 'w') as f:
+        for label in labels:
+            print(label, file=f)
+
+    # train step function
+    def train_step(sess, train_op, global_step, train_step_kwargs):
+        start_time = time.time()
+        total_loss, np_global_step = sess.run([train_op, global_step])
+        time_elapsed = time.time() - start_time
+        # validation
+        if np_global_step % 50 == 0:
+            logging.info('validation accuracy: %.4f', sess.run(accuracy))
+
+        if 'should_log' in train_step_kwargs:
+            if sess.run(train_step_kwargs['should_log']):
+                logging.info('global step %d: loss = %.4f (%.3f sec/step)',
+                             np_global_step, total_loss, time_elapsed)
+        if 'should_stop' in train_step_kwargs:
+            should_stop = sess.run(train_step_kwargs['should_stop'])
+        else:
+            should_stop = False
+        return total_loss, should_stop
+
+    # start training
+    with g.as_default():
+        init_op = tf.group(t_init, v_init, tf.global_variables_initializer())
+        slim.learning.train(
+            train_tensor,
+            FLAGS.checkpoint_dir,
+            graph=g,
+            number_of_steps=FLAGS.number_of_steps,
+            save_summaries_secs=FLAGS.save_summaries_secs,
+            save_interval_secs=FLAGS.save_interval_secs,
+            init_op=init_op,
+            train_step_fn=train_step,
+            global_step=tf.train.get_global_step())
 
 
 if __name__ == '__main__':
