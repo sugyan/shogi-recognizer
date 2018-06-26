@@ -76,8 +76,7 @@ def shogi_inputs(image_lists):
         random.shuffle(zipped)
         return tf.data.Dataset.zip((
             tf.data.Dataset.from_tensor_slices([e[0] for e in zipped]),
-            tf.data.Dataset.from_tensor_slices([e[1] for e in zipped])
-        ))
+            tf.data.Dataset.from_tensor_slices([e[1] for e in zipped])))
 
     def parser(file_path, label_index):
         image = tf.image.decode_jpeg(tf.read_file(file_path), channels=3)
@@ -144,7 +143,6 @@ def build_model():
 
 def main(args=None):
     g, train_tensor, accuracy, t_init, v_init, labels = build_model()
-
     # save labels
     with open(os.path.join(FLAGS.checkpoint_dir, 'labels.txt'), 'w') as f:
         for label in labels:
