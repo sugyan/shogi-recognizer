@@ -1,6 +1,6 @@
 import collections
-import os
 import hashlib
+import os
 import random
 import time
 import tensorflow as tf

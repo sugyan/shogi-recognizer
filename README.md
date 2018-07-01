@@ -13,7 +13,7 @@
 ## Prerequisite
 
 - Python `>= 3.6`
-  - Tensorflow `>= 1.7`
+  - Tensorflow `>= 1.8`
   - Beautiful Soup `>= 4.6`
   - Pillow `>= 5.0`
 
@@ -33,5 +33,6 @@ $ ./dataset.sh
 ### Train
 
 ```
-$ ./train.sh
+$ git submodule update --init
+$ python ./script/train.py
 ```
