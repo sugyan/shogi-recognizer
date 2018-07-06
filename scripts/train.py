@@ -74,9 +74,9 @@ def shogi_inputs(image_lists):
                 labels.append(label_index)
         zipped = list(zip(images, labels))
         random.shuffle(zipped)
-        return tf.data.Dataset.zip((
-            tf.data.Dataset.from_tensor_slices([e[0] for e in zipped]),
-            tf.data.Dataset.from_tensor_slices([e[1] for e in zipped])))
+        return tf.data.Dataset.from_tensor_slices((
+            [e[0] for e in zipped],
+            [e[1] for e in zipped]))
 
     def parser(file_path, label_index):
         image = tf.image.decode_jpeg(tf.read_file(file_path), channels=3)
@@ -177,7 +177,7 @@ def main(args=None):
             number_of_steps=FLAGS.number_of_steps,
             save_summaries_secs=FLAGS.save_summaries_secs,
             save_interval_secs=FLAGS.save_interval_secs,
-            init_op=init_op,
+            local_init_op=init_op,
             train_step_fn=train_step,
             global_step=tf.train.get_global_step())
 
