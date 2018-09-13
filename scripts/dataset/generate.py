@@ -32,7 +32,7 @@ def run(dataDir, g):
         weights.append(weight)
 
     for piece in PIECES:
-        for i in range(3000):
+        for i in range(200):
             fileName = '{:04d}.jpg'.format(i)
             savePath = os.path.join(dataDir, piece, fileName)
             generator = random.choices(generators, weights=weights)[0]
