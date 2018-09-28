@@ -111,8 +111,9 @@ def build_model():
         t_iter, v_iter, training_count = shogi_inputs(image_lists)
         t_inputs, t_labels = t_iter.get_next()
         v_inputs, v_labels = v_iter.get_next()
-        with slim.arg_scope(mobilenet_v2.training_scope()):
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=True)):
             t_logits, _ = mobilenet_v2.mobilenet(t_inputs, num_classes=class_count)
+        with slim.arg_scope(mobilenet_v2.training_scope(is_training=None)):
             v_logits, _ = mobilenet_v2.mobilenet(v_inputs, num_classes=class_count, reuse=True)
         # training
         tf.losses.sparse_softmax_cross_entropy(t_labels, t_logits)
