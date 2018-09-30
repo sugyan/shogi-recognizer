@@ -1,29 +1,26 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib.slim as slim
 from PIL import Image
 from nets.mobilenet import mobilenet_v2
 
 FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_string('checkpoint_path', 'logdir/model.checkpoint',
-                           '''Path to checkpoint file''')
+tf.app.flags.DEFINE_string('graph', 'output_graph.pb',
+                           '''Path to graph file''')
 tf.app.flags.DEFINE_string('labels', 'labels.txt',
-                           '''Path to output labels file''')
+                           '''Path to labels file''')
 tf.app.flags.DEFINE_string('input_image', '',
                            '''Path to input image file''')
 IMAGE_SIZE = 96
 
 
 class Recognizer:
-    def __init__(self, checkpoint_path, labels):
+    def __init__(self, graph, labels):
         with tf.gfile.Open(labels) as f:
             self.labels = [line.strip() for line in f.readlines()]
-
-        self.g = tf.Graph()
-        with self.g.as_default():
-            self.placeholder = tf.placeholder(tf.float32, shape=(None, 96, 96, 3))
-            logits, _ = mobilenet_v2.mobilenet(self.placeholder, len(self.labels))
-            self.top3 = tf.nn.top_k(logits, 3)
-        self.checkpoint_path = checkpoint_path
+        self.graph_def = tf.GraphDef()
+        with tf.gfile.Open(graph, 'rb') as f:
+            self.graph_def.ParseFromString(f.read())
 
     def run(self, input_image):
         img = Image.open(input_image).convert('RGB')
@@ -36,16 +33,15 @@ class Recognizer:
                     h * (rank - 1),
                     w * (10 - file),
                     h * rank])
-                resized = cropped.resize([IMAGE_SIZE, IMAGE_SIZE], resample=Image.BILINEAR)
+                resized = cropped.resize([IMAGE_SIZE, IMAGE_SIZE])
                 inputs.append(np.array(resized) / 255.0)
-        with self.g.as_default():
-            saver = tf.train.Saver()
+        with tf.Graph().as_default() as g:
+            tf.import_graph_def(self.graph_def, name='')
+            placeholder = g.get_tensor_by_name('MobilenetV2/input:0')
+            final_result = g.get_tensor_by_name('MobilenetV2/Logits/output:0')
+            top3 = tf.nn.top_k(final_result, 3)
             with tf.Session() as sess:
-                saver.restore(sess, self.checkpoint_path)
-                results, indices = sess.run(self.top3, feed_dict={self.placeholder: inputs})
-        # for result in results:
-        #     print(result)
-        # board = [[]]
+                results, indices = sess.run(top3, feed_dict={placeholder: inputs})
         for rank in range(9):
             row = ''
             for file in range(9):
@@ -66,4 +62,4 @@ class Recognizer:
 
 
 if __name__ == '__main__':
-    Recognizer(FLAGS.checkpoint_path, FLAGS.labels).run(FLAGS.input_image)
+    Recognizer(FLAGS.graph, FLAGS.labels).run(FLAGS.input_image)

@@ -27,7 +27,7 @@ $ pip install -r requirements.txt
 ### Prepare dataset
 
 ```
-$ ./dataset.sh
+$ ./generate_dataset.sh
 ```
 
 ### Train
@@ -35,4 +35,10 @@ $ ./dataset.sh
 ```
 $ git submodule update --init
 $ python ./script/train.py
+```
+
+### Freeze graph
+
+```
+$ python ./scripts/freeze_graph.py --labels logdir/labels.txt --checkpoint_path logdir/model.ckpt --output_graph output_graph.pb
 ```
