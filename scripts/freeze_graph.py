@@ -1,5 +1,4 @@
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
 from tensorflow.python.framework import graph_util
 from nets.mobilenet import mobilenet_v2
 
