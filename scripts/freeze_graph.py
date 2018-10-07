@@ -14,6 +14,7 @@ tf.app.flags.DEFINE_string("output_graph", '',
 def main(argv=None):
     with tf.gfile.Open(FLAGS.labels) as f:
         labels = [line.strip() for line in f.readlines()]
+    labels_str = tf.constant(list(','.join(labels).encode()), dtype=tf.int32, name='labels')
 
     placeholder = tf.placeholder(tf.float32, shape=(None, 96, 96, 3))
     logits, _ = mobilenet_v2.mobilenet(placeholder, len(labels))
@@ -21,7 +22,7 @@ def main(argv=None):
     with tf.Session() as sess:
         saver.restore(sess, FLAGS.checkpoint_path)
         output = graph_util.convert_variables_to_constants(
-            sess, tf.get_default_graph().as_graph_def(), ['MobilenetV2/Logits/output'])
+            sess, tf.get_default_graph().as_graph_def(), ['MobilenetV2/Logits/output', 'labels'])
     with open(FLAGS.output_graph, 'wb') as f:
         f.write(output.SerializeToString())
 
