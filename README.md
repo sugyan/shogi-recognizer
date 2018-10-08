@@ -47,5 +47,5 @@ $ python ./scripts/freeze_graph.py --labels logdir/labels.txt --checkpoint_path 
 ### Convert to JS
 
 ```
-$ tensorflowjs_converter --input_format tf_frozen_model --output_node_names 'MobilenetV2/Logits/output' output_graph.pb ./js
+$ tensorflowjs_converter --input_format tf_frozen_model --output_node_names 'MobilenetV2/Logits/output,labels' output_graph.pb ./js
 ```
