@@ -1,3 +1,4 @@
+import argparse
 import collections
 import hashlib
 import os
@@ -6,23 +7,8 @@ import time
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from nets.mobilenet import mobilenet_v2
+from tensorflow.python.lib.io import file_io
 from tensorflow.python.platform import tf_logging as logging
-
-FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_string('image_dir', os.path.join(os.path.dirname(__file__), '..', 'dataset'),
-                           '''Path to directories of labeled images''')
-tf.app.flags.DEFINE_string('checkpoint_dir', 'logdir',
-                           '''Directory for writing training checkpoints and logs''')
-tf.app.flags.DEFINE_integer('validation_percentage', 10,
-                            'What percentage of images to use as a validation set')
-tf.app.flags.DEFINE_integer('batch_size', 64,
-                            '''Batch size''')
-tf.app.flags.DEFINE_integer('number_of_steps', None,
-                            '''Number of training steps to perform before stopping''')
-tf.app.flags.DEFINE_integer('save_summaries_secs', 100,
-                            '''How often to save summaries, secs''')
-tf.app.flags.DEFINE_integer('save_interval_secs', 100,
-                            '''How often to save checkpoints, secs''')
 
 # same as mobilenet_v1_train.py
 _LEARNING_RATE_DECAY_FACTOR = 0.94
@@ -33,7 +19,7 @@ def create_image_lists(image_dir, validation_percentage):
     sub_dirs = [d for d in tf.gfile.ListDirectory(image_dir) if tf.gfile.IsDirectory(os.path.join(image_dir, d))]
     for sub_dir in sub_dirs:
         file_list = []
-        dir_name = os.path.basename(sub_dir)
+        dir_name = sub_dir.strip('/')
         file_glob = os.path.join(image_dir, dir_name, '*.jpg')
         file_list.extend(tf.gfile.Glob(file_glob))
         training_images = []
@@ -54,7 +40,7 @@ def create_image_lists(image_dir, validation_percentage):
     return result
 
 
-def shogi_inputs(image_lists):
+def shogi_inputs(args, image_lists):
     class_count = len(image_lists.keys())
     t_count, v_count = 0, 0
     for l in image_lists.values():
@@ -70,7 +56,7 @@ def shogi_inputs(image_lists):
             label_names.append(label_name)
             category_list = image_lists[label_name][category]
             for basename in category_list:
-                images.append(os.path.join(FLAGS.image_dir, label_name, basename))
+                images.append(os.path.join(args.image_dir, label_name, basename))
                 labels.append(label_index)
         zipped = list(zip(images, labels))
         random.shuffle(zipped)
@@ -87,13 +73,13 @@ def shogi_inputs(image_lists):
     t_dataset = generate_dataset('training')
     t_dataset = t_dataset.map(parser)
     t_dataset = t_dataset.repeat()
-    t_dataset = t_dataset.shuffle(FLAGS.batch_size * 10)
-    t_dataset = t_dataset.batch(FLAGS.batch_size)
+    t_dataset = t_dataset.shuffle(args.batch_size * 10)
+    t_dataset = t_dataset.batch(args.batch_size)
 
     v_dataset = generate_dataset('validation')
     v_dataset = v_dataset.map(parser)
     v_dataset = v_dataset.repeat()
-    v_dataset = v_dataset.batch(FLAGS.batch_size * 5)
+    v_dataset = v_dataset.batch(args.batch_size * 5)
 
     return [
         t_dataset.make_initializable_iterator(),
@@ -102,13 +88,13 @@ def shogi_inputs(image_lists):
     ]
 
 
-def build_model():
-    image_lists = create_image_lists(FLAGS.image_dir, FLAGS.validation_percentage)
+def build_model(args):
+    image_lists = create_image_lists(args.image_dir, args.validation_percentage)
     class_count = len(image_lists.keys())
 
     g = tf.Graph()
     with g.as_default():
-        t_iter, v_iter, training_count = shogi_inputs(image_lists)
+        t_iter, v_iter, training_count = shogi_inputs(args, image_lists)
         t_inputs, t_labels = t_iter.get_next()
         v_inputs, v_labels = v_iter.get_next()
         with slim.arg_scope(mobilenet_v2.training_scope(is_training=True)):
@@ -119,7 +105,7 @@ def build_model():
         tf.losses.sparse_softmax_cross_entropy(t_labels, t_logits)
         total_loss = tf.losses.get_total_loss(name='total_loss')
         num_epochs_per_decay = 2.5
-        decay_steps = int(training_count / FLAGS.batch_size * num_epochs_per_decay)
+        decay_steps = int(training_count / args.batch_size * num_epochs_per_decay)
         learning_rate = tf.train.exponential_decay(
             0.045,
             tf.train.get_or_create_global_step(),
@@ -143,9 +129,9 @@ def build_model():
 
 
 def main(args=None):
-    g, train_tensor, accuracy, t_init, v_init, labels = build_model()
+    g, train_tensor, accuracy, t_init, v_init, labels = build_model(args)
     # save labels
-    with open(os.path.join(FLAGS.checkpoint_dir, 'labels.txt'), 'w') as f:
+    with file_io.FileIO(os.path.join(args.job_dir, 'labels.txt'), 'w') as f:
         for label in labels:
             print(label, file=f)
 
@@ -173,11 +159,11 @@ def main(args=None):
         init_op = tf.group(t_init, v_init, tf.global_variables_initializer())
         slim.learning.train(
             train_tensor,
-            FLAGS.checkpoint_dir,
+            args.job_dir,
             graph=g,
-            number_of_steps=FLAGS.number_of_steps,
-            save_summaries_secs=FLAGS.save_summaries_secs,
-            save_interval_secs=FLAGS.save_interval_secs,
+            number_of_steps=args.number_of_steps,
+            save_summaries_secs=args.save_summaries_secs,
+            save_interval_secs=args.save_interval_secs,
             local_init_op=init_op,
             train_step_fn=train_step,
             global_step=tf.train.get_global_step())
@@ -185,4 +171,39 @@ def main(args=None):
 
 if __name__ == '__main__':
     logging.set_verbosity(logging.INFO)
-    tf.app.run(main)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--job-dir',
+        help='''Directory for writing training checkpoints and logs''',
+        type=str,
+        default='logdir')
+    parser.add_argument(
+        '--image_dir',
+        help='''Path to directories of labeled images''',
+        type=str,
+        default=os.path.join(os.path.dirname(__file__), '..', 'dataset'))
+    parser.add_argument(
+        '--validation_percentage',
+        help='''What percentage of images to use as a validation set''',
+        type=int,
+        default=10)
+    parser.add_argument(
+        '--batch_size',
+        help='''Batch size''',
+        type=int,
+        default=64)
+    parser.add_argument(
+        '--number_of_steps',
+        help='''Number of training steps to perform before stopping''',
+        type=int)
+    parser.add_argument(
+        '--save_summaries_secs',
+        help='''How often to save summaries, secs''',
+        type=int,
+        default=100)
+    parser.add_argument(
+        '--save_interval_secs',
+        help='''How often to save checkpoints, secs''',
+        type=int,
+        default=100)
+    main(parser.parse_args())

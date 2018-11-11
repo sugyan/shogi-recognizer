@@ -13,7 +13,7 @@
 ## Prerequisite
 
 - Python `>= 3.6`
-  - Tensorflow `>= 1.8`
+  - Tensorflow `>= 1.12`
   - Beautiful Soup `>= 4.6`
   - Pillow `>= 5.0`
 
@@ -34,7 +34,15 @@ $ ./generate_dataset.sh
 
 ```
 $ git submodule update --init
-$ python ./script/train.py
+$ PYTHONPATH=./models/research/slim python ./trainer/task.py
+```
+
+#### Training on Cloud ML Engine
+
+```
+$ export BUCKET_NAME=<your bucket name>
+$ ./cloudml/upload_data.sh
+$ ./cloudml/run.sh
 ```
 
 ### Freeze graph
@@ -44,7 +52,7 @@ $ python ./scripts/freeze_graph.py --labels logdir/labels.txt --checkpoint_path 
 ```
 
 
-### Convert to JS
+## Convert to JS
 
 ```
 $ tensorflowjs_converter --input_format tf_frozen_model --output_node_names 'MobilenetV2/Logits/output,labels' output_graph.pb ./js
