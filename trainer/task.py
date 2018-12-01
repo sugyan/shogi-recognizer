@@ -14,69 +14,27 @@ from tensorflow.python.platform import tf_logging as logging
 _LEARNING_RATE_DECAY_FACTOR = 0.94
 
 
-def create_image_lists(image_dir, validation_percentage):
-    result = collections.OrderedDict()
-    sub_dirs = [d for d in tf.gfile.ListDirectory(image_dir) if tf.gfile.IsDirectory(os.path.join(image_dir, d))]
-    for sub_dir in sub_dirs:
-        file_list = []
-        dir_name = sub_dir.strip('/')
-        file_glob = os.path.join(image_dir, dir_name, '*.jpg')
-        file_list.extend(tf.gfile.Glob(file_glob))
-        training_images = []
-        validation_images = []
-        for file_name in file_list:
-            base_name = os.path.basename(file_name)
-            # https://github.com/tensorflow/hub/blob/master/examples/image_retraining/retrain.py
-            hashed = hashlib.sha1(tf.compat.as_bytes(file_name)).hexdigest()
-            percentage_hash = int(hashed, 16) % 100
-            if percentage_hash < validation_percentage:
-                validation_images.append(base_name)
-            else:
-                training_images.append(base_name)
-        result[dir_name] = {
-            'training': training_images,
-            'validation': validation_images,
-        }
-    return result
+def shogi_inputs(args):
+    training_count = 0
+    for _ in tf.io.tf_record_iterator(os.path.join(args.data_dir, 'train.tfrecord')):
+        training_count += 1
 
-
-def shogi_inputs(args, image_lists):
-    class_count = len(image_lists.keys())
-    t_count, v_count = 0, 0
-    for l in image_lists.values():
-        t_count += len(l['training'])
-        v_count += len(l['validation'])
-
-    def generate_dataset(category):
-        images = []
-        labels = []
-        label_names = []
-        for label_index in range(class_count):
-            label_name = list(image_lists.keys())[label_index]
-            label_names.append(label_name)
-            category_list = image_lists[label_name][category]
-            for basename in category_list:
-                images.append(os.path.join(args.image_dir, label_name, basename))
-                labels.append(label_index)
-        zipped = list(zip(images, labels))
-        random.shuffle(zipped)
-        return tf.data.Dataset.from_tensor_slices((
-            [e[0] for e in zipped],
-            [e[1] for e in zipped]))
-
-    def parser(file_path, label_index):
-        image = tf.image.decode_jpeg(tf.read_file(file_path), channels=3)
+    def parser(example):
+        features = tf.parse_single_example(example, {
+            'image': tf.FixedLenFeature((), tf.string),
+            'label': tf.FixedLenFeature((), tf.int64)})
+        image = tf.image.decode_jpeg(features['image'], channels=3)
         image = tf.image.convert_image_dtype(image, tf.float32)
         image = tf.image.resize_images(image, [96, 96])
-        return image, tf.to_int64(label_index)
+        return image, features['label']
 
-    t_dataset = generate_dataset('training')
+    t_dataset = tf.data.TFRecordDataset(os.path.join(args.data_dir, 'train.tfrecord'))
     t_dataset = t_dataset.map(parser)
     t_dataset = t_dataset.repeat()
     t_dataset = t_dataset.shuffle(args.batch_size * 10)
     t_dataset = t_dataset.batch(args.batch_size)
 
-    v_dataset = generate_dataset('validation')
+    v_dataset = tf.data.TFRecordDataset(os.path.join(args.data_dir, 'valid.tfrecord'))
     v_dataset = v_dataset.map(parser)
     v_dataset = v_dataset.repeat()
     v_dataset = v_dataset.batch(args.batch_size * 5)
@@ -84,17 +42,18 @@ def shogi_inputs(args, image_lists):
     return [
         t_dataset.make_initializable_iterator(),
         v_dataset.make_initializable_iterator(),
-        t_count,
+        training_count
     ]
 
 
 def build_model(args):
-    image_lists = create_image_lists(args.image_dir, args.validation_percentage)
-    class_count = len(image_lists.keys())
+    with file_io.FileIO(os.path.join(args.data_dir, 'labels.txt'), 'r') as f:
+        labels = [label.strip() for label in f.readlines()]
+    class_count = len(labels)
 
     g = tf.Graph()
     with g.as_default():
-        t_iter, v_iter, training_count = shogi_inputs(args, image_lists)
+        t_iter, v_iter, training_count = shogi_inputs(args)
         t_inputs, t_labels = t_iter.get_next()
         v_inputs, v_labels = v_iter.get_next()
         with slim.arg_scope(mobilenet_v2.training_scope(is_training=True)):
@@ -125,15 +84,11 @@ def build_model(args):
     slim.summaries.add_scalar_summary(total_loss, 'total_loss', 'losses')
     slim.summaries.add_scalar_summary(learning_rate, 'learning_rate', 'training')
     slim.summaries.add_scalar_summary(accuracy, 'validation_accuracy', 'validation')
-    return g, train_tensor, accuracy, t_iter.initializer, v_iter.initializer, list(image_lists.keys())
+    return g, train_tensor, accuracy, t_iter.initializer, v_iter.initializer
 
 
 def main(args=None):
-    g, train_tensor, accuracy, t_init, v_init, labels = build_model(args)
-    # save labels
-    with file_io.FileIO(os.path.join(args.job_dir, 'labels.txt'), 'w') as f:
-        for label in labels:
-            print(label, file=f)
+    g, train_tensor, accuracy, t_init, v_init = build_model(args)
 
     # train step function
     def train_step(sess, train_op, global_step, train_step_kwargs):
@@ -178,15 +133,10 @@ if __name__ == '__main__':
         type=str,
         default='logdir')
     parser.add_argument(
-        '--image_dir',
-        help='''Path to directories of labeled images''',
+        '--data_dir',
+        help='''Path to directories of tfrecord files''',
         type=str,
-        default=os.path.join(os.path.dirname(__file__), '..', 'dataset'))
-    parser.add_argument(
-        '--validation_percentage',
-        help='''What percentage of images to use as a validation set''',
-        type=int,
-        default=10)
+        default=os.path.join(os.path.dirname(__file__), '..', 'data'))
     parser.add_argument(
         '--batch_size',
         help='''Batch size''',
