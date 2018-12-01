@@ -16,7 +16,7 @@ _LEARNING_RATE_DECAY_FACTOR = 0.94
 
 def shogi_inputs(args):
     training_count = 0
-    for _ in tf.io.tf_record_iterator(os.path.join(args.data_dir, 'train.tfrecord')):
+    for _ in tf.python_io.tf_record_iterator(os.path.join(args.data_dir, 'train.tfrecord')):
         training_count += 1
 
     def parser(example):

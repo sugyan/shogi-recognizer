@@ -26,5 +26,6 @@ gcloud ml-engine jobs submit training $JOB_NAME \
     --config ${root_dir}/trainer/config.yaml \
     --runtime-version 1.10 \
     -- \
-    --image_dir "gs://${BUCKET_NAME}/dataset" \
-    --number_of_steps 100
+    --data_dir "gs://${BUCKET_NAME}/dataset" \
+    --save_summaries_secs 30 \
+    --number_of_steps 1200
