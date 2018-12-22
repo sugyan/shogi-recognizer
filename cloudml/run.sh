@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -z "$1" ]; then
+    echo "usage: $0 <number of training steps>"
+    exit 1
+fi
+
 if [ -z "${BUCKET_NAME}" ]; then
     echo "BUCKET_NAME must not be empty"
     exit 1
@@ -24,8 +29,8 @@ gcloud ml-engine jobs submit training $JOB_NAME \
     --module-name $MAIN_TRAINER_MODULE \
     --region $REGION \
     --config ${root_dir}/trainer/config.yaml \
-    --runtime-version 1.10 \
+    --runtime-version 1.12 \
     -- \
     --data_dir "gs://${BUCKET_NAME}/dataset" \
-    --save_summaries_secs 30 \
-    --number_of_steps 1200
+    --save_summaries_secs 25 \
+    --number_of_steps "$1"
