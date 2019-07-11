@@ -8,7 +8,7 @@ MAIN_TRAINER_MODULE="trainer.task"
 JOB_DIR=${root_dir}/logdir
 
 cd ${root_dir}/trainer
-gcloud ml-engine local train \
+gcloud ai-platform local train \
     --package-path $TRAINER_PACKAGE_PATH \
     --module-name $MAIN_TRAINER_MODULE \
     --job-dir $JOB_DIR \

@@ -22,14 +22,14 @@ JOB_NAME="shogi_$now"
 JOB_DIR="gs://${BUCKET_NAME}/output/${JOB_NAME}"
 REGION="asia-east1"
 
-gcloud ml-engine jobs submit training $JOB_NAME \
+gcloud ai-platform jobs submit training $JOB_NAME \
     --staging-bucket $PACKAGE_STAGING_PATH \
     --job-dir $JOB_DIR  \
     --package-path $TRAINER_PACKAGE_PATH \
     --module-name $MAIN_TRAINER_MODULE \
     --region $REGION \
     --config ${root_dir}/trainer/config.yaml \
-    --runtime-version 1.12 \
+    --runtime-version 1.13 \
     -- \
     --data_dir "gs://${BUCKET_NAME}/dataset" \
     --save_summaries_secs 25 \
