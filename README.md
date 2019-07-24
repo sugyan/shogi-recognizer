@@ -33,12 +33,12 @@ $ ./cloudml/run.sh
 ### Freeze graph
 
 ```
-$ python ./scripts/freeze_graph.py --labels logdir/labels.txt --checkpoint_path logdir/model.ckpt --output_graph output_graph.pb
+$ python ./scripts/save_model.py --labels logdir/labels.txt --checkpoint_path logdir/model.ckpt --output_graph ./output
 ```
 
 
 ## Convert to JS
 
 ```
-$ tensorflowjs_converter --input_format tf_frozen_model --output_node_names 'MobilenetV2/Logits/output,labels' output_graph.pb ./js
+$ tensorflowjs_converter --input_format tf_saved_model ./output ./js
 ```

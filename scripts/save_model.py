@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow.python.framework import graph_util
 from nets.mobilenet import mobilenet_v2
 
 FLAGS = tf.app.flags.FLAGS
@@ -7,8 +6,8 @@ tf.app.flags.DEFINE_string('checkpoint_path', 'logdir/model.checkpoint',
                            '''Path to checkpoint file''')
 tf.app.flags.DEFINE_string('labels', 'labels.txt',
                            '''Path to labels file''')
-tf.app.flags.DEFINE_string("output_graph", '',
-                           """Path to write the frozen 'GraphDef'""")
+tf.app.flags.DEFINE_string("export_dir", 'output',
+                           """Path to write the SavedModel""")
 
 
 def main(argv=None):
@@ -18,13 +17,15 @@ def main(argv=None):
 
     placeholder = tf.placeholder(tf.float32, shape=(None, 96, 96, 3))
     logits, _ = mobilenet_v2.mobilenet(placeholder, len(labels))
+
     saver = tf.train.Saver()
     with tf.Session() as sess:
         saver.restore(sess, FLAGS.checkpoint_path)
-        output = graph_util.convert_variables_to_constants(
-            sess, tf.get_default_graph().as_graph_def(), ['MobilenetV2/Logits/output', 'labels'])
-    with open(FLAGS.output_graph, 'wb') as f:
-        f.write(output.SerializeToString())
+
+        tf.saved_model.simple_save(sess,
+                                   FLAGS.export_dir,
+                                   inputs={'placeholder': placeholder},
+                                   outputs={'labels': labels_str, 'output': logits})
 
 
 if __name__ == '__main__':
