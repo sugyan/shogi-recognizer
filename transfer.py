@@ -1,7 +1,6 @@
 import argparse
 import json
 import os
-import numpy as np
 import tensorflow as tf
 
 IMAGE_SIZE = (96, 96)
@@ -65,13 +64,22 @@ class FeaturesSequence(tf.keras.utils.Sequence):
         self.data = data
 
     def __getitem__(self, idx):
-        return np.array(self.data[idx][0], dtype=np.float32), np.array([self.data[idx][1]])
+        return tf.constant([self.data[idx][0]]), tf.constant([self.data[idx][1]])
 
     def __len__(self):
         return len(self.data)
 
 
+class Callback(tf.keras.callbacks.Callback):
+    def on_train_batch_begin(self, batch, logs=None):
+        # print(batch, logs)
+        pass
+
+
 def run(args):
+    with open(os.path.join(args.data_dir, 'labels.txt')) as fp:
+        labels = [line.strip() for line in fp.readlines()]
+
     if not os.path.exists(args.features):
         dump_features(args.data_dir, args.features)
 
@@ -79,18 +87,22 @@ def run(args):
         data = json.load(fp)
 
     training_seq = FeaturesSequence(data['training'])
+    # validation_seq = FeaturesSequence(data['validation'])
     model = tf.keras.Sequential([
         tf.keras.layers.Dropout(rate=0.2),
-        tf.keras.layers.Dense(29, activation='softmax',
+        tf.keras.layers.Dense(len(labels), activation='softmax',
                               kernel_regularizer=tf.keras.regularizers.l2(0.0001))
     ])
     model.build((None, 1280,))
-
     model.compile(
-        optimizer=tf.keras.optimizers.SGD(lr=0.005, momentum=0.9),
-        loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
+        optimizer=tf.keras.optimizers.SGD(),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=['accuracy'])
-    model.fit_generator(training_seq)
+    model.fit(
+        training_seq,
+        epochs=3,
+        # validation_data=validation_seq,
+        callbacks=[Callback()])
 
 
 if __name__ == '__main__':
