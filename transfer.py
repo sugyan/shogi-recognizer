@@ -1,7 +1,6 @@
 import argparse
 import glob
 import os
-import pickle
 import numpy as np
 import tensorflow as tf
 
@@ -90,8 +89,7 @@ def run(args):
 
     testing_data, _ = dataset('testing')
     test_result = model.evaluate(testing_data, verbose=0)
-    with open('results.pkl', 'wb') as fp:
-        pickle.dump({'history': history.history, 'result': test_result}, fp)
+    print(history.history, test_result)
 
     model.save_weights(os.path.join(args.weights_dir, 'transfer.h5'))
 

@@ -19,8 +19,9 @@ tensorboard==1.14.0
 tensorflow==2.0.0rc0
 tensorflow-estimator==1.14.0
 tensorflow-hub==0.5.0
-tensorflowjs==1.2.3
+tensorflowjs==1.2.6
 termcolor==1.1.0
 tf-estimator-nightly==1.14.0.dev2019080601
+tf-nightly==1.15.0.dev20190821
 Werkzeug==0.15.4
 wrapt==1.11.2
