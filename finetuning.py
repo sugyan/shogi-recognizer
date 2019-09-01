@@ -13,10 +13,13 @@ def tfrecord_dataset(filepath):
         }
         features = tf.io.parse_single_example(example, feature_description)
         image = tf.image.decode_jpeg(features['image'], channels=3)
-        image = tf.image.convert_image_dtype(image, tf.float32)
         return image, features['label']
 
-    return tf.data.TFRecordDataset(filepath).map(parser)
+    dataset = tf.data.TFRecordDataset(filepath).map(parser)
+    size = 0
+    for _ in dataset:
+        size += 1
+    return dataset.shuffle(size), size
 
 
 def run(args):
@@ -41,17 +44,47 @@ def run(args):
             weights='imagenet'),
         trained_model,
     ])
+    model.trainable = False
+
+    # testing_data, testing_size = tfrecord_dataset(os.path.join(args.data_dir, 'testing.tfrecord'))
+    # for images, labels in testing_data.batch(args.batch_size).take(3):
+    #     print(tf.keras.backend.argmax(model(tf.image.convert_image_dtype(images, tf.float32))), labels)
+
     model.summary()
     model.compile(
         optimizer=tf.keras.optimizers.RMSprop(),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        loss=tf.keras.losses.CategoricalCrossentropy(),
         metrics=['accuracy'])
 
-    training_data = tfrecord_dataset(os.path.join(args.data_dir, 'training.tfrecord'))
-    for images, labels in training_data.batch(32).take(3):
-        print(tf.keras.backend.argmax(model(images)), labels)
+    training_data, training_size = tfrecord_dataset(os.path.join(args.data_dir, 'training.tfrecord'))
+    for images, labels in training_data.batch(training_size).take(1):
+        generator = tf.keras.preprocessing.image.ImageDataGenerator(
+            width_shift_range=1,
+            height_shift_range=1,
+            rotation_range=1,
+            brightness_range=(0.9, 1.1),
+            zoom_range=0.01,
+            rescale=1./255)
+        training_datagen = generator.flow(
+            images,
+            tf.keras.utils.to_categorical(labels, 29),
+            batch_size=args.batch_size)
 
-    # model.fit(training_data)
+    validation_data, validation_size = tfrecord_dataset(os.path.join(args.data_dir, 'validation.tfrecord'))
+    for images, labels in validation_data.batch(validation_size).take(1):
+        generator = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
+        validation_datagen = generator.flow(
+            images,
+            tf.keras.utils.to_categorical(labels, 29),
+            batch_size=args.batch_size)
+
+    history = model.fit_generator(
+        training_datagen,
+        epochs=10,
+        steps_per_epoch=30,
+        validation_data=validation_datagen)
+
+    print(history.history)
 
     model.save(os.path.join(args.weights_dir, 'finetuning.h5'))
 
@@ -68,5 +101,10 @@ if __name__ == '__main__':
         help='''Path to directory of weights files''',
         type=str,
         default='weights')
+    parser.add_argument(
+        '--batch_size',
+        help='''Batch size''',
+        type=int,
+        default=32)
     args = parser.parse_args()
     run(args)
