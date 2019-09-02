@@ -13,6 +13,7 @@ def tfrecord_dataset(filepath):
         }
         features = tf.io.parse_single_example(example, feature_description)
         image = tf.image.decode_jpeg(features['image'], channels=3)
+        image = tf.image.convert_image_dtype(image, tf.float32)
         return image, features['label']
 
     dataset = tf.data.TFRecordDataset(filepath).map(parser)
@@ -22,71 +23,62 @@ def tfrecord_dataset(filepath):
     return dataset.shuffle(size), size
 
 
-def run(args):
-    with open(os.path.join(args.data_dir, 'labels.txt')) as fp:
-        labels = [line.strip() for line in fp.readlines()]
-
-    trained_model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(None, 1280)),
-        tf.keras.layers.Dropout(rate=0.1),
-        tf.keras.layers.Dense(
-            len(labels), activation='softmax',
-            kernel_regularizer=tf.keras.regularizers.l2(0.0001)),
-    ])
-    trained_model.build((None, 1280))
-    trained_model.load_weights(os.path.join(args.weights_dir, 'transfer.h5'))
-
-    model = tf.keras.Sequential([
+def build_model(classes):
+    return tf.keras.Sequential([
         tf.keras.applications.MobileNetV2(
             input_shape=IMAGE_SIZE + (3,),
             include_top=False,
             pooling='avg',
             weights='imagenet'),
-        trained_model,
+        tf.keras.layers.Dropout(rate=0.1),
+        tf.keras.layers.Dense(
+            classes,
+            activation='softmax',
+            kernel_regularizer=tf.keras.regularizers.l2(0.0001)),
     ])
-    model.trainable = False
 
-    # testing_data, testing_size = tfrecord_dataset(os.path.join(args.data_dir, 'testing.tfrecord'))
-    # for images, labels in testing_data.batch(args.batch_size).take(3):
-    #     print(tf.keras.backend.argmax(model(tf.image.convert_image_dtype(images, tf.float32))), labels)
 
+def train(data_dir, weights_dir, batch_size):
+    with open(os.path.join(data_dir, 'labels.txt')) as fp:
+        labels = [line.strip() for line in fp.readlines()]
+
+    model = build_model(len(labels))
     model.summary()
     model.compile(
         optimizer=tf.keras.optimizers.RMSprop(),
-        loss=tf.keras.losses.CategoricalCrossentropy(),
-        metrics=['accuracy'])
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
-    training_data, training_size = tfrecord_dataset(os.path.join(args.data_dir, 'training.tfrecord'))
+    training_data, training_size = tfrecord_dataset(os.path.join(data_dir, 'training.tfrecord'))
     for images, labels in training_data.batch(training_size).take(1):
         generator = tf.keras.preprocessing.image.ImageDataGenerator(
             width_shift_range=1,
             height_shift_range=1,
             rotation_range=1,
             brightness_range=(0.9, 1.1),
-            zoom_range=0.01,
-            rescale=1./255)
-        training_datagen = generator.flow(
-            images,
-            tf.keras.utils.to_categorical(labels, 29),
-            batch_size=args.batch_size)
+            zoom_range=0.01)
+        training_datagen = generator.flow(images, labels, batch_size=batch_size)
 
-    validation_data, validation_size = tfrecord_dataset(os.path.join(args.data_dir, 'validation.tfrecord'))
-    for images, labels in validation_data.batch(validation_size).take(1):
-        generator = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
-        validation_datagen = generator.flow(
-            images,
-            tf.keras.utils.to_categorical(labels, 29),
-            batch_size=args.batch_size)
+    validation_data, validation_size = tfrecord_dataset(os.path.join(data_dir, 'validation.tfrecord'))
+    testing_data, testing_size = tfrecord_dataset(os.path.join(data_dir, 'testing.tfrecord'))
 
     history = model.fit_generator(
         training_datagen,
-        epochs=10,
-        steps_per_epoch=30,
-        validation_data=validation_datagen)
-
+        epochs=50,
+        steps_per_epoch=training_size // batch_size,
+        validation_steps=validation_size // batch_size,
+        validation_data=validation_data.batch(batch_size),
+        callbacks=[
+            tf.keras.callbacks.ModelCheckpoint(
+                os.path.join(weights_dir, 'weights.{epoch:02d}-{val_loss:.2f}.h5'),
+                save_freq=training_size * 3),
+        ])
     print(history.history)
 
-    model.save(os.path.join(args.weights_dir, 'finetuning.h5'))
+    test_result = model.evaluate(testing_data, steps=training_size // batch_size)
+    print(test_result)
+
+    model.save(os.path.join(weights_dir, 'finetuning.h5'))
 
 
 if __name__ == '__main__':
@@ -107,4 +99,4 @@ if __name__ == '__main__':
         type=int,
         default=32)
     args = parser.parse_args()
-    run(args)
+    train(args.data_dir, args.weights_dir, args.batch_size)
