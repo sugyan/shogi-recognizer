@@ -52,11 +52,13 @@ def train(data_dir, weights_dir, batch_size):
     training_data, training_size = tfrecord_dataset(os.path.join(data_dir, 'training.tfrecord'))
     for images, labels in training_data.batch(training_size).take(1):
         generator = tf.keras.preprocessing.image.ImageDataGenerator(
-            width_shift_range=1,
-            height_shift_range=1,
-            rotation_range=1,
+            rotation_range=2,
+            width_shift_range=2,
+            height_shift_range=2,
             brightness_range=(0.9, 1.1),
-            zoom_range=0.01)
+            channel_shift_range=0.1,
+            zoom_range=0.01,
+            rescale=1./255)
         training_datagen = generator.flow(images, labels, batch_size=batch_size)
 
     validation_data, validation_size = tfrecord_dataset(os.path.join(data_dir, 'validation.tfrecord'))
@@ -70,12 +72,12 @@ def train(data_dir, weights_dir, batch_size):
         validation_data=validation_data.batch(batch_size),
         callbacks=[
             tf.keras.callbacks.ModelCheckpoint(
-                os.path.join(weights_dir, 'weights.{epoch:02d}-{val_loss:.2f}.h5'),
-                save_freq=training_size * 3),
+                os.path.join(weights_dir, 'weights.{epoch:02d}-{val_loss:.5f}.h5'),
+                save_weights_only=True),
         ])
     print(history.history)
 
-    test_result = model.evaluate(testing_data, steps=training_size // batch_size)
+    test_result = model.evaluate(testing_data.batch(batch_size), steps=testing_size // batch_size)
     print(test_result)
 
     model.save(os.path.join(weights_dir, 'finetuning.h5'))
