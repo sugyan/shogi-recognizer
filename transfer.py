@@ -85,6 +85,7 @@ def run(args):
         epochs=50,
         steps_per_epoch=training_size // args.batch_size,
         validation_data=validation_data,
+        callbacks=[tf.keras.callbacks.TensorBoard()],
         verbose=2)
 
     testing_data, _ = dataset('testing')
