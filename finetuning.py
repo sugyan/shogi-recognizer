@@ -2,40 +2,8 @@ import argparse
 import os
 import tensorflow as tf
 
-IMAGE_SIZE = (96, 96)
-
-
-def tfrecord_dataset(filepath):
-    def parser(example):
-        feature_description = {
-            'image': tf.io.FixedLenFeature((), tf.string),
-            'label': tf.io.FixedLenFeature((), tf.int64)
-        }
-        features = tf.io.parse_single_example(example, feature_description)
-        image = tf.image.decode_jpeg(features['image'], channels=3)
-        image = tf.image.convert_image_dtype(image, tf.float32)
-        return image, features['label']
-
-    dataset = tf.data.TFRecordDataset(filepath).map(parser)
-    size = 0
-    for _ in dataset:
-        size += 1
-    return dataset.shuffle(size), size
-
-
-def build_model(classes):
-    return tf.keras.Sequential([
-        tf.keras.applications.MobileNetV2(
-            input_shape=IMAGE_SIZE + (3,),
-            include_top=False,
-            pooling='avg',
-            weights='imagenet'),
-        tf.keras.layers.Dropout(rate=0.1),
-        tf.keras.layers.Dense(
-            classes,
-            activation='softmax',
-            kernel_regularizer=tf.keras.regularizers.l2(0.0001)),
-    ])
+from model import build_model
+from dataset import tfrecord_dataset
 
 
 def train(data_dir, weights_dir, batch_size):
@@ -62,7 +30,6 @@ def train(data_dir, weights_dir, batch_size):
         training_datagen = generator.flow(images, labels, batch_size=batch_size)
 
     validation_data, validation_size = tfrecord_dataset(os.path.join(data_dir, 'validation.tfrecord'))
-    testing_data, testing_size = tfrecord_dataset(os.path.join(data_dir, 'testing.tfrecord'))
 
     history = model.fit_generator(
         training_datagen,
@@ -76,9 +43,6 @@ def train(data_dir, weights_dir, batch_size):
                 save_weights_only=True),
         ])
     print(history.history)
-
-    test_result = model.evaluate(testing_data.batch(batch_size), steps=testing_size // batch_size)
-    print(test_result)
 
     model.save(os.path.join(weights_dir, 'finetuning.h5'))
 
