@@ -1,96 +1,92 @@
 import argparse
 import glob
 import os
-import numpy as np
 import tensorflow as tf
 
-IMAGE_SIZE = (96, 96)
-
-
-def mobilenet_v2():
-    return tf.keras.applications.MobileNetV2(
-        input_shape=IMAGE_SIZE + (3,),
-        include_top=False,
-        pooling='avg',
-        weights='imagenet')
-
-
-def tfrecord_dataset(filepath):
-    def parser(example):
-        feature_description = {
-            'image': tf.io.FixedLenFeature((), tf.string),
-            'label': tf.io.FixedLenFeature((), tf.int64)
-        }
-        features = tf.io.parse_single_example(example, feature_description)
-        image = tf.image.decode_jpeg(features['image'], channels=3)
-        image = tf.image.convert_image_dtype(image, tf.float32)
-        return image, features['label']
-
-    return tf.data.TFRecordDataset(filepath).map(parser)
+from dataset import tfrecord_dataset
+from model import mobilenet_v2
 
 
 def dump_features(data_dir, features_dir):
     model = mobilenet_v2()
     model.trainable = False
-    model.build((None,) + IMAGE_SIZE + (3,))
     model.summary()
-    batch_size = 50
 
     for filepath in glob.glob(os.path.join(data_dir, '*.tfrecord')):
         category = os.path.splitext(os.path.basename(filepath))[0]
         print(f'calculate features of {category} data', end='', flush=True)
-        inputs, targets = [], []
-        for images, labels in tfrecord_dataset(filepath).batch(batch_size):
-            for features, label in zip(model(images), labels):
-                inputs.append(features.numpy())
-                targets.append(label.numpy())
-            print('.', end='', flush=True)
+        dataset, _ = tfrecord_dataset(filepath)
+        with tf.io.TFRecordWriter(os.path.join(features_dir, f'{category}.tfrecord')) as writer:
+            for i, (image, label) in enumerate(dataset):
+                features = model.predict(tf.expand_dims(image, axis=0))
+                feature = {
+                    'features': tf.train.Feature(
+                        float_list=tf.train.FloatList(value=features.flatten().tolist())),
+                    'label': tf.train.Feature(
+                        int64_list=tf.train.Int64List(value=[label]))
+                }
+                example = tf.train.Example(features=tf.train.Features(feature=feature))
+                writer.write(example.SerializeToString())
+                if i % 50 == 0:
+                    print('.', end='', flush=True)
         print()
-        np.savez(os.path.join(features_dir, f'{category}.npz'), inputs=inputs, targets=targets)
 
 
 def run(args):
-    with open(os.path.join(args.data_dir, 'labels.txt')) as fp:
-        labels = [line.strip() for line in fp.readlines()]
-
-    if len(glob.glob(os.path.join(args.features_dir, '*.npz'))) == 0:
+    if len(glob.glob(os.path.join(args.features_dir, '*.tfrecord'))) == 0:
         os.makedirs(args.features_dir, exist_ok=True)
         dump_features(args.data_dir, args.features_dir)
 
     def dataset(category):
-        npz = np.load(os.path.join(args.features_dir, f'{category}.npz'))
-        inputs = npz['inputs']
-        targets = npz['targets']
-        size = inputs.shape[0]
-        return tf.data.Dataset.from_tensor_slices((inputs, targets)) \
-            .shuffle(inputs.shape[0]) \
-            .batch(args.batch_size), size
+        def parse_example(serialized):
+            features = {
+                'features': tf.io.FixedLenFeature([1280], tf.float32),
+                'label': tf.io.FixedLenFeature([], tf.int64),
+            }
+            example = tf.io.parse_single_example(serialized, features)
+            return example['features'], example['label']
+
+        ds = tf.data.TFRecordDataset(os.path.join(args.features_dir, f'{category}.tfrecord'))
+        size = 0
+        for _ in ds:
+            size += 1
+        return ds.map(parse_example), size
 
     training_data, training_size = dataset('training')
-    validation_data, _ = dataset('validation')
+    validation_data, validation_size = dataset('validation')
+
+    with open(os.path.join(args.data_dir, 'labels.txt')) as fp:
+        labels = [line.strip() for line in fp.readlines()]
+    classes = len(labels)
+
     model = tf.keras.Sequential([
+        tf.keras.layers.InputLayer((1280,)),
         tf.keras.layers.Dropout(rate=0.1),
         tf.keras.layers.Dense(
-            len(labels), activation='softmax',
+            classes,
+            activation='softmax',
             kernel_regularizer=tf.keras.regularizers.l2(0.0001)),
     ])
-    model.build((None, 1280))
     model.summary()
     model.compile(
         optimizer=tf.keras.optimizers.RMSprop(),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=['accuracy'])
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(
-        training_data.repeat(),
-        epochs=50,
+        training_data.shuffle(training_size).repeat().batch(args.batch_size),
         steps_per_epoch=training_size // args.batch_size,
-        validation_data=validation_data,
-        callbacks=[tf.keras.callbacks.TensorBoard()],
-        verbose=2)
+        epochs=30,
+        validation_data=validation_data.shuffle(validation_size).batch(args.batch_size),
+        validation_steps=validation_size // args.batch_size,
+        callbacks=[tf.keras.callbacks.TensorBoard()])
+    print(history.history)
 
-    testing_data, _ = dataset('testing')
-    test_result = model.evaluate(testing_data, verbose=0)
-    print(history.history, test_result)
+    testing_data, testing_size = dataset('testing')
+    test_result = model.evaluate(
+        testing_data.shuffle(testing_size).batch(args.batch_size),
+        steps=testing_size // args.batch_size,
+        verbose=0)
+    print(test_result)
 
     model.save_weights(os.path.join(args.weights_dir, 'transfer.h5'))
 

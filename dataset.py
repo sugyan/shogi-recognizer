@@ -12,8 +12,9 @@ def tfrecord_dataset(filepath):
         image = tf.image.convert_image_dtype(image, tf.float32)
         return image, features['label']
 
-    dataset = tf.data.TFRecordDataset(filepath).map(parser)
+    dataset = tf.data.TFRecordDataset(filepath)
     size = 0
     for _ in dataset:
         size += 1
-    return dataset, size
+
+    return dataset.map(parser), size
