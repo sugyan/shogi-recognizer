@@ -89,6 +89,12 @@ def run(args):
     print(test_result)
 
     model.save_weights(os.path.join(args.weights_dir, 'transfer.h5'))
+    classifier = tf.keras.Sequential([
+        mobilenet_v2(),
+        model,
+    ])
+    classifier.trainable = False
+    classifier.save('transfer.h5')
 
 
 if __name__ == '__main__':

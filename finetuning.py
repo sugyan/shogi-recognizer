@@ -2,15 +2,22 @@ import argparse
 import os
 import tensorflow as tf
 
-from model import build_model
 from dataset import tfrecord_dataset
+from model import mobilenet_v2
 
 
 def train(data_dir, weights_dir, batch_size):
     with open(os.path.join(data_dir, 'labels.txt')) as fp:
         labels = [line.strip() for line in fp.readlines()]
 
-    model = build_model(len(labels))
+    model = tf.keras.Sequential([
+        mobilenet_v2(),
+        tf.keras.layers.Dropout(rate=0.1),
+        tf.keras.layers.Dense(
+            len(labels),
+            activation='softmax',
+            kernel_regularizer=tf.keras.regularizers.l2(0.0001)),
+    ])
     model.summary()
     model.compile(
         optimizer=tf.keras.optimizers.RMSprop(),
