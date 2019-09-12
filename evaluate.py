@@ -6,14 +6,22 @@ from dataset import tfrecord_dataset
 
 
 def evaluate(data_dir, model_path):
-    model = tf.keras.models.load_model(model_path)
-    model.summary()
-    model.compile(
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+    with open(os.path.join(data_dir, 'labels.txt'), 'r') as fp:
+        labels = [line.strip() for line in fp.readlines()]
 
-    testing_data, testing_size = tfrecord_dataset(os.path.join(data_dir, 'testing.tfrecord'))
-    test_result = model.evaluate(testing_data.shuffle(testing_size).batch(1), steps=testing_size)
+    testing_datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
+    testing_data = testing_datagen.flow_from_directory(
+        os.path.join(data_dir, 'testing'),
+        target_size=(96, 96),
+        classes=labels)
+
+    model = tf.keras.models.load_model(model_path)
+    model.compile(
+        loss=tf.keras.losses.CategoricalCrossentropy(),
+        metrics=[tf.keras.metrics.CategoricalAccuracy()])
+    model.summary()
+
+    test_result = model.evaluate(testing_data)
     print(test_result)
 
 

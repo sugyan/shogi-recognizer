@@ -4,7 +4,6 @@ import os
 import numpy as np
 import tensorflow as tf
 
-# from dataset import tfrecord_dataset
 from model import mobilenet_v2
 
 
@@ -54,7 +53,7 @@ def run(args):
 
     model = tf.keras.Sequential([
         tf.keras.layers.InputLayer((1280,)),
-        tf.keras.layers.Dropout(rate=0.1),
+        tf.keras.layers.Dropout(rate=0.2),
         tf.keras.layers.Dense(
             classes,
             activation='softmax',
@@ -62,13 +61,12 @@ def run(args):
     ])
     model.summary()
     model.compile(
-        optimizer=tf.keras.optimizers.RMSprop(),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(
         training_data.repeat().batch(args.batch_size),
         steps_per_epoch=training_size // args.batch_size,
-        epochs=30,
+        epochs=50,
         validation_data=validation_data.batch(args.batch_size),
         validation_steps=validation_size // args.batch_size,
         callbacks=[tf.keras.callbacks.TensorBoard()])
