@@ -67,13 +67,13 @@ def run(args):
     history = model.fit(
         training_data.repeat().batch(args.batch_size),
         steps_per_epoch=training_size // args.batch_size,
-        epochs=50,
+        epochs=100,
         validation_data=validation_data.batch(args.batch_size),
         validation_steps=validation_size // args.batch_size,
         callbacks=[tf.keras.callbacks.TensorBoard()])
     print(history.history)
 
-    model.save_weights(os.path.join(args.weights_dir, 'transfer.h5'))
+    model.save_weights(os.path.join(args.weights_dir, 'transfer_weights.h5'))
     classifier = tf.keras.Sequential([
         mobilenet_v2(),
         model,

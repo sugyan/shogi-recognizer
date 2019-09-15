@@ -2,13 +2,34 @@ import argparse
 import os
 import tensorflow as tf
 
-from dataset import tfrecord_dataset
 from model import mobilenet_v2
 
 
-def train(data_dir, weights_dir, batch_size):
+def train(data_dir, weights_dir, batch_size=32):
     with open(os.path.join(data_dir, 'labels.txt')) as fp:
         labels = [line.strip() for line in fp.readlines()]
+
+    training_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        rotation_range=2,
+        width_shift_range=2,
+        height_shift_range=2,
+        brightness_range=(0.8, 1.2),
+        channel_shift_range=0.2,
+        zoom_range=0.02,
+        rescale=1./255)
+    training_data = training_datagen.flow_from_directory(
+        os.path.join(data_dir, 'training'),
+        target_size=(96, 96),
+        classes=labels,
+        batch_size=batch_size)
+
+    validation_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        rescale=1./255)
+    validation_data = validation_datagen.flow_from_directory(
+        os.path.join(data_dir, 'validation'),
+        target_size=(96, 96),
+        classes=labels,
+        batch_size=batch_size)
 
     model = tf.keras.Sequential([
         mobilenet_v2(),
@@ -16,42 +37,28 @@ def train(data_dir, weights_dir, batch_size):
         tf.keras.layers.Dense(
             len(labels),
             activation='softmax',
-            kernel_regularizer=tf.keras.regularizers.l2(0.0001)),
+            kernel_regularizer=tf.keras.regularizers.l2(1e-4)),
     ])
     model.summary()
     model.compile(
         optimizer=tf.keras.optimizers.RMSprop(),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-
-    training_data, training_size = tfrecord_dataset(os.path.join(data_dir, 'training.tfrecord'))
-    for images, labels in training_data.batch(training_size).take(1):
-        generator = tf.keras.preprocessing.image.ImageDataGenerator(
-            rotation_range=2,
-            width_shift_range=2,
-            height_shift_range=2,
-            brightness_range=(0.9, 1.1),
-            channel_shift_range=0.1,
-            zoom_range=0.01,
-            rescale=1./255)
-        training_datagen = generator.flow(images, labels, batch_size=batch_size)
-
-    validation_data, validation_size = tfrecord_dataset(os.path.join(data_dir, 'validation.tfrecord'))
+        loss=tf.keras.losses.CategoricalCrossentropy(),
+        metrics=[tf.keras.metrics.CategoricalAccuracy()])
 
     history = model.fit_generator(
-        training_datagen,
+        training_data,
         epochs=50,
-        steps_per_epoch=training_size // batch_size,
-        validation_steps=validation_size // batch_size,
-        validation_data=validation_data.batch(batch_size),
+        validation_data=validation_data,
         callbacks=[
+            tf.keras.callbacks.TensorBoard(),
             tf.keras.callbacks.ModelCheckpoint(
-                os.path.join(weights_dir, 'weights.{epoch:02d}-{val_loss:.5f}.h5'),
+                os.path.join(weights_dir, 'finetuning_weights-{epoch:02d}.h5'),
                 save_weights_only=True),
         ])
     print(history.history)
 
-    model.save(os.path.join(weights_dir, 'finetuning.h5'))
+    model.trainable = False
+    model.save('finetuning_classifier.h5')
 
 
 if __name__ == '__main__':
