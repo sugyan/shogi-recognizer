@@ -25,7 +25,8 @@ def dump_features(data_dir, features_dir):
                 continue
             print(root)
             for filename in files:
-                image = tf.io.decode_image(tf.io.read_file(os.path.join(root, filename)), channels=3)
+                image = tf.io.read_file(os.path.join(root, filename))
+                image = tf.io.decode_image(image, channels=3)
                 image = tf.image.convert_image_dtype(image, dtype=tf.float32)
                 features.append(model(tf.expand_dims(image, axis=0)).numpy().flatten())
                 label.append(labels.index(os.path.basename(root)))
@@ -57,7 +58,7 @@ def run(args):
         tf.keras.layers.Dense(
             classes,
             activation='softmax',
-            kernel_regularizer=tf.keras.regularizers.l2(0.0001)),
+            kernel_regularizer=tf.keras.regularizers.l2(1e-4)),
     ])
     model.summary()
     model.compile(
@@ -78,7 +79,7 @@ def run(args):
         model,
     ])
     classifier.trainable = False
-    classifier.save('transfer.h5')
+    classifier.save('transfer_classifier.h5')
 
 
 if __name__ == '__main__':

@@ -2,8 +2,6 @@ import argparse
 import os
 import tensorflow as tf
 
-from dataset import tfrecord_dataset
-
 
 def evaluate(data_dir, model_path):
     with open(os.path.join(data_dir, 'labels.txt'), 'r') as fp:
@@ -11,7 +9,7 @@ def evaluate(data_dir, model_path):
 
     testing_datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
     testing_data = testing_datagen.flow_from_directory(
-        os.path.join(data_dir, 'testing'),
+        os.path.join(data_dir, 'test'),
         target_size=(96, 96),
         classes=labels)
 
