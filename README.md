@@ -2,43 +2,27 @@
 
 ## Prerequisite
 
-- Python `>= 3.6`
-  - Tensorflow `>= 1.12`
+- Python `>= 3.7`
+  - Tensorflow `>= 2.0`
 
 
 ## Training
 
 ```
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 
 ### Train
 
 ```
-$ git submodule update --init
-$ PYTHONPATH=./models/research/slim python ./trainer/task.py
-```
-
-
-#### Training on Cloud ML Engine
-
-```
-$ export BUCKET_NAME=<your bucket name>
-$ ./cloudml/upload_data.sh
-$ ./cloudml/run.sh
-```
-
-
-### Freeze graph
-
-```
-$ python ./scripts/save_model.py --labels logdir/labels.txt --checkpoint_path logdir/model.ckpt --output_graph ./output
+python transfer.py --data_dir <Dataset Directory>
+python finetuning.py --data_dir <Dataset Directory>
 ```
 
 
 ## Convert to JS
 
 ```
-$ tensorflowjs_converter --input_format tf_saved_model ./output ./js
+tensorflowjs_converter --input_format tf_saved_model --output_format tfjs_graph_model <Saved Directory> js/
 ```
