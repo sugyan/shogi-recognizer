@@ -47,7 +47,7 @@ def train(data_dir, weights_dir, batch_size=32):
 
     history = model.fit_generator(
         training_data,
-        epochs=50,
+        epochs=100,
         validation_data=validation_data,
         callbacks=[
             tf.keras.callbacks.TensorBoard(),
