@@ -10,6 +10,7 @@ from model import mobilenet_v2
 def dump_features(data_dir, features_dir):
     with open(os.path.join(data_dir, 'labels.txt'), 'r') as fp:
         labels = [line.strip() for line in fp.readlines()]
+    label_to_index = {label: index for index, label in enumerate(labels)}
 
     model = mobilenet_v2()
     model.trainable = False
@@ -29,17 +30,17 @@ def dump_features(data_dir, features_dir):
                 image = tf.io.decode_image(image, channels=3)
                 image = tf.image.convert_image_dtype(image, dtype=tf.float32)
                 features.append(model(tf.expand_dims(image, axis=0)).numpy().flatten())
-                label.append(labels.index(os.path.basename(root)))
+                label.append(label_to_index[os.path.basename(root)])
         np.savez(os.path.join(features_dir, f'{category}.npz'), inputs=features, targets=label)
 
 
-def run(args):
-    if len(glob.glob(os.path.join(args.features_dir, '*.npz'))) == 0:
-        os.makedirs(args.features_dir, exist_ok=True)
-        dump_features(args.data_dir, args.features_dir)
+def train(data_dir, features_dir, weights_dir, batch_size=32):
+    if len(glob.glob(os.path.join(features_dir, '*.npz'))) == 0:
+        os.makedirs(features_dir, exist_ok=True)
+        dump_features(data_dir, features_dir)
 
     def dataset(category):
-        npz = np.load(os.path.join(args.features_dir, f'{category}.npz'))
+        npz = np.load(os.path.join(features_dir, f'{category}.npz'))
         inputs = npz['inputs']
         targets = npz['targets']
         size = inputs.shape[0]
@@ -48,7 +49,7 @@ def run(args):
     training_data, training_size = dataset('training')
     validation_data, validation_size = dataset('validation')
 
-    with open(os.path.join(args.data_dir, 'labels.txt')) as fp:
+    with open(os.path.join(data_dir, 'labels.txt')) as fp:
         labels = [line.strip() for line in fp.readlines()]
     classes = len(labels)
 
@@ -65,15 +66,15 @@ def run(args):
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
     history = model.fit(
-        training_data.repeat().batch(args.batch_size),
-        steps_per_epoch=training_size // args.batch_size,
+        training_data.repeat().batch(batch_size),
+        steps_per_epoch=training_size // batch_size,
         epochs=100,
-        validation_data=validation_data.batch(args.batch_size),
-        validation_steps=validation_size // args.batch_size,
+        validation_data=validation_data.batch(batch_size),
+        validation_steps=validation_size // batch_size,
         callbacks=[tf.keras.callbacks.TensorBoard()])
     print(history.history)
 
-    model.save_weights(os.path.join(args.weights_dir, 'transfer_weights.h5'))
+    model.save_weights(os.path.join(weights_dir, 'transfer_weights.h5'))
     classifier = tf.keras.Sequential([
         mobilenet_v2(),
         model,
@@ -105,4 +106,4 @@ if __name__ == '__main__':
         type=int,
         default=32)
     args = parser.parse_args()
-    run(args)
+    train(args.data_dir, args.features_dir, args.weights_dir, args.batch_size)
